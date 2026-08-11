@@ -65,7 +65,7 @@
             { nama: 'Anas Imron Hamza, S.Pd.', nip: '0', pangkat: 'Guru Tidak Tetap' }
         ];
 
-        // Daftar 36 Kelas untuk SMAN 1 Krembung (X, XI, XII masing-masing 12 kelas)
+        // Daftar 36 Kelas untuk SMAN 1 Krembung
         const KELAS_LIST = [
             'X-1', 'X-2', 'X-3', 'X-4', 'X-5', 'X-6', 'X-7', 'X-8', 'X-9', 'X-10', 'X-11', 'X-12',
             'XI-1', 'XI-2', 'XI-3', 'XI-4', 'XI-5', 'XI-6', 'XI-7', 'XI-8', 'XI-9', 'XI-10', 'XI-11', 'XI-12',
@@ -344,13 +344,13 @@
             React.useEffect(() => {
                 const initialAbsen = {};
                 siswaInClass.forEach(s => {
-                    initialAbsen[s.nis] = 'Hadir';
+                    initialAbsen[s.idUnik] = 'Hadir';
                 });
                 setAbsensi(initialAbsen);
             }, [siswaInClass, selectedKelas, selectedKategori]);
 
-            const handleStatusChange = (nis, status) => {
-                setAbsensi(prev => ({ ...prev, [nis]: status }));
+            const handleStatusChange = (idUnik, status) => {
+                setAbsensi(prev => ({ ...prev, [idUnik]: status }));
             };
 
             const handleSubmit = async () => {
@@ -376,9 +376,9 @@
                     kelas: selectedKelas,
                     kategori: selectedKategori,
                     data: siswaInClass.map(siswa => ({
-                        nis: siswa.nis,
+                        nis: siswa.nis || '-',
                         nama: siswa.nama,
-                        status: absensi[siswa.nis] || 'Hadir'
+                        status: absensi[siswa.idUnik] || 'Hadir'
                     }))
                 };
 
@@ -460,21 +460,21 @@
                                 <table className="w-full text-left text-sm whitespace-nowrap">
                                     <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
                                         <tr>
-                                            <th className="px-6 py-4 font-semibold">NIS</th>
+                                            <th className="px-6 py-4 font-semibold">NIS / ID</th>
                                             <th className="px-6 py-4 font-semibold">Nama Siswa</th>
                                             <th className="px-6 py-4 font-semibold text-center">Status Kehadiran</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {siswaInClass.map(siswa => (
-                                            <tr key={siswa.nis} className="hover:bg-gray-50/50">
-                                                <td className="px-6 py-4 text-gray-600">{siswa.nis}</td>
+                                            <tr key={siswa.idUnik} className="hover:bg-gray-50/50">
+                                                <td className="px-6 py-4 text-gray-600">{siswa.nis || '-'}</td>
                                                 <td className="px-6 py-4 font-medium text-gray-900">{siswa.nama}</td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex justify-center gap-2">
                                                         {STATUS_PRESENSI.map(status => {
                                                             let colorClass = "bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent";
-                                                            if (absensi[siswa.nis] === status) {
+                                                            if (absensi[siswa.idUnik] === status) {
                                                                 if(status === 'Hadir') colorClass = "bg-green-100 text-green-700 border-green-500";
                                                                 else if(status === 'Sakit' || status === 'Ijin') colorClass = "bg-blue-100 text-blue-700 border-blue-500";
                                                                 else if(status === 'Alpha') colorClass = "bg-red-100 text-red-700 border-red-500";
@@ -484,7 +484,7 @@
                                                             return (
                                                                 <button
                                                                     key={status}
-                                                                    onClick={() => handleStatusChange(siswa.nis, status)}
+                                                                    onClick={() => handleStatusChange(siswa.idUnik, status)}
                                                                     className={`px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${colorClass}`}
                                                                 >
                                                                     {status}
@@ -549,7 +549,7 @@
                 }
 
                 setIsSubmitting(true);
-                const siswaObj = siswaList.find(s => s.nis === selectedSiswa);
+                const siswaObj = siswaList.find(s => s.idUnik === selectedSiswa);
                 if (!siswaObj) {
                     showToast("Data siswa tidak ditemukan", "error");
                     setIsSubmitting(false);
@@ -563,7 +563,7 @@
                     action: 'disiplin',
                     tanggal: new Date().toISOString().split('T')[0],
                     guru: namaPelapor,
-                    nis: siswaObj.nis,
+                    nis: siswaObj.nis || '-',
                     nama: siswaObj.nama,
                     kelas: siswaObj.kelas,
                     kategori: kategori,
@@ -640,7 +640,7 @@
                                     >
                                         <option value="">-- Pilih Siswa --</option>
                                         {filteredSiswa.map(s => (
-                                            <option key={s.nis} value={s.nis}>{s.nama} - {s.kelas} (NIS: {s.nis})</option>
+                                            <option key={s.idUnik} value={s.idUnik}>{s.nama} - {s.kelas} {s.nis ? `(NIS: ${s.nis})` : ''}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -718,9 +718,37 @@
 
             const filteredSiswaTable = siswaList.filter(s => 
                 s.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                s.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (s.nis && s.nis.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 s.kelas.toLowerCase().includes(searchQuery.toLowerCase())
             );
+
+            // Fungsi pembantu untuk memproses data mentah menjadi data bersih ber-ID Unik
+            const processNewStudents = (rawRows) => {
+                const newStudents = [];
+                rawRows.forEach((b, index) => {
+                    if(b.trim() === '') return;
+                    const parts = b.split(/[,;|\t]/).map(p => p.trim());
+                    if(parts.length >= 3) {
+                        // Lewati baris header jika ada
+                        if (index === 0 && (parts[0].toLowerCase() === 'nis' || parts[1].toLowerCase() === 'nama')) return;
+                        
+                        const nisVal = parts[0] && parts[0] !== '0' && parts[0] !== '-' ? parts[0] : '';
+                        const namaVal = parts[1];
+                        const kelasVal = parts[2];
+                        
+                        // Buat ID unik aman meskipun NIS sama/kosong
+                        const idUnik = nisVal ? `NIS-${nisVal}` : `KLS-${kelasVal}-${namaVal.replace(/\s+/g, '')}-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+
+                        newStudents.push({
+                            idUnik: idUnik,
+                            nis: nisVal,
+                            nama: namaVal,
+                            kelas: kelasVal
+                        });
+                    }
+                });
+                return newStudents;
+            };
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
@@ -730,27 +758,18 @@
                 reader.onload = (event) => {
                     const text = event.target.result;
                     const baris = text.split('\n');
-                    const newStudents = [];
-                    
-                    baris.forEach((b, index) => {
-                        if(b.trim() === '') return;
-                        const parts = b.split(/[,;|\t]/).map(p => p.trim());
-                        if(parts.length >= 3) {
-                            if (index === 0 && (parts[0].toLowerCase() === 'nis' || isNaN(parts[0]))) return;
-                            newStudents.push({
-                                nis: parts[0],
-                                nama: parts[1],
-                                kelas: parts[2]
-                            });
-                        }
-                    });
+                    const newStudents = processNewStudents(baris);
 
                     if(newStudents.length > 0) {
+                        // Gabungkan tanpa duplikasi berdasarkan idUnik atau nama+kelas
                         const combined = [...siswaList];
                         newStudents.forEach(ns => {
-                            const existingIdx = combined.findIndex(s => s.nis === ns.nis);
-                            if(existingIdx >= 0) combined[existingIdx] = ns;
-                            else combined.push(ns);
+                            const existingIdx = combined.findIndex(s => s.idUnik === ns.idUnik || (s.nama.toLowerCase() === ns.nama.toLowerCase() && s.kelas.toLowerCase() === ns.kelas.toLowerCase()));
+                            if(existingIdx >= 0) {
+                                combined[existingIdx] = ns;
+                            } else {
+                                combined.push(ns);
+                            }
                         });
                         
                         setSiswaList(combined);
@@ -767,26 +786,17 @@
                 if(!massData.trim()) return;
                 
                 const baris = massData.split('\n');
-                const newStudents = [];
-                
-                baris.forEach(b => {
-                    if(b.trim() === '') return;
-                    const parts = b.split(/[,|\t]/).map(p => p.trim());
-                    if(parts.length >= 3) {
-                        newStudents.push({
-                            nis: parts[0],
-                            nama: parts[1],
-                            kelas: parts[2]
-                        });
-                    }
-                });
+                const newStudents = processNewStudents(baris);
 
                 if(newStudents.length > 0) {
                     const combined = [...siswaList];
                     newStudents.forEach(ns => {
-                        const existingIdx = combined.findIndex(s => s.nis === ns.nis);
-                        if(existingIdx >= 0) combined[existingIdx] = ns;
-                        else combined.push(ns);
+                        const existingIdx = combined.findIndex(s => s.idUnik === ns.idUnik || (s.nama.toLowerCase() === ns.nama.toLowerCase() && s.kelas.toLowerCase() === ns.kelas.toLowerCase()));
+                        if(existingIdx >= 0) {
+                            combined[existingIdx] = ns;
+                        } else {
+                            combined.push(ns);
+                        }
                     });
                     
                     setSiswaList(combined);
@@ -798,9 +808,9 @@
                 }
             };
 
-            const handleDeleteSiswa = (nis) => {
-                if (confirm(`Yakin ingin menghapus siswa dengan NIS ${nis}?`)) {
-                    const updated = siswaList.filter(s => s.nis !== nis);
+            const handleDeleteSiswa = (idUnik) => {
+                if (confirm(`Yakin ingin menghapus data siswa ini?`)) {
+                    const updated = siswaList.filter(s => s.idUnik !== idUnik);
                     setSiswaList(updated);
                     showToast("Data siswa berhasil dihapus.", "success");
                 }
@@ -865,14 +875,14 @@
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredSiswaTable.map((row, rIdx) => (
-                                        <tr key={rIdx} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-gray-600">{row.nis}</td>
+                                    {filteredSiswaTable.map((row) => (
+                                        <tr key={row.idUnik} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-gray-600">{row.nis || <span className="text-gray-400 italic">Belum ada NIS</span>}</td>
                                             <td className="px-6 py-4 font-medium text-gray-900">{row.nama}</td>
                                             <td className="px-6 py-4 text-gray-600 font-semibold">{row.kelas}</td>
                                             <td className="px-6 py-4 text-center">
                                                 <button 
-                                                    onClick={() => handleDeleteSiswa(row.nis)}
+                                                    onClick={() => handleDeleteSiswa(row.idUnik)}
                                                     className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition"
                                                     title="Hapus Siswa"
                                                 >
@@ -898,11 +908,11 @@
                                     <button onClick={() => setShowInputModal(false)} className="text-gray-500 hover:text-red-500"><i className="ph ph-x text-xl"></i></button>
                                 </div>
                                 <div className="p-6">
-                                    <p className="text-sm text-gray-600 mb-2">Tempel (Paste) data dari Excel dengan urutan kolom: <strong>NIS, Nama Lengkap, Kelas</strong>.</p>
+                                    <p className="text-sm text-gray-600 mb-2">Tempel (Paste) data dari Excel dengan urutan kolom: <strong>NIS (boleh dikosongkan/0), Nama Lengkap, Kelas</strong>.</p>
                                     <textarea 
                                         rows="10" 
                                         className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre font-mono"
-                                        placeholder="1001	Abdullah Fachry	X-1&#10;1002	Aisyah Putri	X-1"
+                                        placeholder="-	Abdullah Fachry	X-1&#10;-	Aisyah Putri	X-1"
                                         value={massData}
                                         onChange={(e) => setMassData(e.target.value)}
                                     ></textarea>
@@ -943,14 +953,14 @@
                                 
                                 <div id="print-area" className="p-8 bg-white grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                                     {siswaList.filter(s => qrFilterKelas === '' || s.kelas.trim().toUpperCase() === qrFilterKelas.toUpperCase()).map(siswa => (
-                                        <div key={siswa.nis} className="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center">
+                                        <div key={siswa.idUnik} className="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center">
                                             <h4 className="font-bold text-xs text-gray-800 mb-1 leading-tight line-clamp-2 min-h-[2rem]">{siswa.nama}</h4>
                                             <img 
-                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${siswa.nis}`} 
-                                                alt={`QR ${siswa.nis}`} 
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${siswa.idUnik}`} 
+                                                alt={`QR ${siswa.nama}`} 
                                                 className="w-24 h-24 mb-2"
                                             />
-                                            <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded w-full">{siswa.nis}</span>
+                                            <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded w-full truncate">{siswa.nis || 'Tanpa NIS'}</span>
                                             <span className="text-[10px] text-gray-500 mt-1">Kelas {siswa.kelas}</span>
                                         </div>
                                     ))}
@@ -973,11 +983,11 @@
             const rekapMap = {};
             disiplinRecords.forEach(r => {
                 if (!filterKelas || r.kelas.trim().toUpperCase() === filterKelas.toUpperCase()) {
-                    if(!rekapMap[r.nis]) {
-                        rekapMap[r.nis] = { nis: r.nis, nama: r.nama, kelas: r.kelas, totalPoin: 0, pelanggaran: [] };
+                    if(!rekapMap[r.nis + r.nama]) {
+                        rekapMap[r.nis + r.nama] = { nis: r.nis, nama: r.nama, kelas: r.kelas, totalPoin: 0, pelanggaran: [] };
                     }
-                    rekapMap[r.nis].totalPoin += r.poin;
-                    rekapMap[r.nis].pelanggaran.push(r);
+                    rekapMap[r.nis + r.nama].totalPoin += r.poin;
+                    rekapMap[r.nis + r.nama].pelanggaran.push(r);
                 }
             });
             const rekapArray = Object.values(rekapMap).sort((a, b) => b.totalPoin - a.totalPoin);
@@ -1035,7 +1045,7 @@
                                         <tbody className="divide-y divide-gray-100">
                                             {rekapArray.map((row, rIdx) => (
                                                 <tr key={rIdx} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4 text-gray-600">{row.nis}</td>
+                                                    <td className="px-6 py-4 text-gray-600">{row.nis || '-'}</td>
                                                     <td className="px-6 py-4 font-medium text-gray-900">{row.nama}</td>
                                                     <td className="px-6 py-4 text-gray-600">{row.kelas}</td>
                                                     <td className="px-6 py-4">
@@ -1095,10 +1105,10 @@
                                 return;
                             }
 
-                            // Pencocokan NIS secara fleksibel (mengabaikan spasi atau case-sensitive)
-                            const siswaObj = siswaList.find(s => s.nis.trim() === cleanText);
+                            // Pencocokan fleksibel berdasarkan idUnik QR Code ATAU NIS
+                            const siswaObj = siswaList.find(s => s.idUnik === cleanText || (s.nis && s.nis.trim() === cleanText));
                             if (!siswaObj) {
-                                showToast(`NIS "${cleanText}" tidak ditemukan dalam database siswa.`, "error");
+                                showToast(`QR Code / NIS "${cleanText}" tidak ditemukan dalam database.`, "error");
                                 return;
                             }
 
@@ -1114,7 +1124,7 @@
                                 kelas: siswaObj.kelas,
                                 kategori: kategori,
                                 data: [{
-                                    nis: siswaObj.nis,
+                                    nis: siswaObj.nis || '-',
                                     nama: siswaObj.nama,
                                     status: 'Hadir'
                                 }]
@@ -1132,7 +1142,7 @@
                                 
                                 setScanHistory(prev => {
                                     const newHistory = [...prev];
-                                    if(newHistory[0] && newHistory[0].nis === siswaObj.nis) {
+                                    if(newHistory[0] && newHistory[0].idUnik === siswaObj.idUnik) {
                                         newHistory[0].status = 'Terkirim';
                                     }
                                     return newHistory;
@@ -1211,7 +1221,7 @@
                                             </div>
                                             <div>
                                                 <p className="font-semibold text-gray-800 text-sm">{sh.nama}</p>
-                                                <p className="text-xs text-gray-500">{sh.kelas} • NIS: {sh.nis}</p>
+                                                <p className="text-xs text-gray-500">{sh.kelas} • ID: {sh.nis || 'Tanpa NIS'}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -1233,16 +1243,19 @@
             const [publicView, setPublicView] = React.useState(null);
             const [toast, setToast] = React.useState(null);
             
-            // State Siswa yang tersinkronisasi secara permanen ke LocalStorage (Mendukung ribuan data siswa)
+            // State Siswa dengan ID Unik otomatis untuk menangani NIS kosong/sama
             const [siswaList, setSiswaList] = React.useState(() => {
-                const savedSiswa = localStorage.getItem('siap_siswa_list_v2');
+                const savedSiswa = localStorage.getItem('siap_siswa_list_v3');
                 if (savedSiswa) {
                     try {
                         const parsed = JSON.parse(savedSiswa);
                         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
                     } catch (e) {}
                 }
-                return INITIAL_SISWA_LIST;
+                return INITIAL_SISWA_LIST.map((s, idx) => ({
+                    ...s,
+                    idUnik: s.nis ? `NIS-${s.nis}` : `INIT-${idx}-${s.kelas}`
+                }));
             });
 
             const [disiplinRecords, setDisiplinRecords] = React.useState(() => {
@@ -1251,7 +1264,7 @@
             });
 
             React.useEffect(() => {
-                localStorage.setItem('siap_siswa_list_v2', JSON.stringify(siswaList));
+                localStorage.setItem('siap_siswa_list_v3', JSON.stringify(siswaList));
             }, [siswaList]);
 
             React.useEffect(() => {
@@ -1351,4 +1364,3 @@
     </script>
 </body>
 </html>
-```eof
