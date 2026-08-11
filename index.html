@@ -1,30 +1,730 @@
-// ==========================================
-// KONFIGURASI GOOGLE APPS SCRIPT
-// ==========================================
-// Ganti string di bawah dengan URL Web App Apps Script milik Anda:
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec"; 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIAP SMANIKRE - Sistem Informasi, Absensi & Kedisiplinan SMAN 1 Krembung</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- HTML5 QR Code Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- QRCodeJS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- JSZip Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- SheetJS Excel Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-/**
- * Fungsi untuk mengirim data ke Google Sheets
- * @param {Object} dataPayload 
- */
-async function kirimKeSpreadsheet(dataPayload) {
-    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycb...")) {
-        console.warn("URL Google Apps Script belum dikonfigurasi.");
-        return;
-    }
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-after: always; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
 
-    try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(dataPayload)
+    <script>
+        // ==========================================
+        // 1. KONFIGURASI GOOGLE APPS SCRIPT URL
+        // ==========================================
+        // GANTI URL DI BAWAH DENGAN URL WEB APP HASIL DEPLOY GOOGLE APPS SCRIPT ANDA
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_c5Q141OuSYCo91Zph6lixvWfYzhGBlubez10T10OtjIYTnRv9LoUh7f7vnfp4WTR_g/exec"; 
+
+        /**
+         * Kirim Data ke Google Spreadsheet secara asynchronous
+         */
+        async function kirimKeSpreadsheet(dataPayload) {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycbx...")) {
+                console.warn("[Google Sheets API] URL belum dikonfigurasi.");
+                return;
+            }
+
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dataPayload)
+                });
+                console.log("[Google Sheets API] Data berhasil dikirim:", dataPayload.action);
+            } catch (err) {
+                console.error("[Google Sheets API] Gagal mengirim data:", err);
+            }
+        }
+
+        // ==========================================
+        // 2. DATA UTAMA & STATE GLOBAL
+        // ==========================================
+        const SMANIKRE_LOGO_URL = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhjhEe7DsQaweQWtckuBY0QdRPB_J0RbHqfSXb0fFnNGOQYwfzbn9SyTV1WORteNpd7S3rcGj3FYpaCf0X7tjQpcXoDfErD-aWPD9kTf-6auJIoAZ3ETmXpvuoVydS7H87HO-vidqv4ECyayUG4dFJNZNMuVWD2lUyaMaF7ox5BYCfAksicgx7ryvy6V56Z/s1600/LOGO%20SMANIKRE%20(1).png";
+
+        const DATA_GURU = [
+            { id: 1, nama: "Ulfatul Husna, M.Pd.", nip: "197410101998022001", gol: "IV/c", jabatan: "Pembina Utama Muda", mapel: "PAI" },
+            { id: 2, nama: "Muchammad Solichul Muhtadin, S.Pd.I", nip: "198911052025211030", gol: "IX", jabatan: "Guru PAI", mapel: "PAI" },
+            { id: 3, nama: "M. ZAIM AFFAN, S.Pd.I", nip: "199108082025211026", gol: "IX", jabatan: "Guru PAI", mapel: "PAI" },
+            { id: 4, nama: "ASRI WIYANTI, S.Pd.I", nip: "199304102025212037", gol: "IX", jabatan: "Guru PAI", mapel: "PAI" },
+            { id: 5, nama: "Anas Imron Hamza, S.Pd.", nip: "0", gol: "-", jabatan: "Guru Tidak Tetap (GTT)", mapel: "PAI" }
+        ];
+
+        const INITIAL_STUDENTS = [
+            { kelas: "XII-1", nis: "11731", nama: "ADAMA SEPTIAN KURNIAWAN", jk: "L" },
+            { kelas: "XII-1", nis: "11875", nama: "AJENG PUTRI RAHMAWATI", jk: "P" },
+            { kelas: "XII-1", nis: "11803", nama: "AKBAR PUTRA JAYA WARDANA", jk: "L" },
+            { kelas: "XII-2", nis: "11729", nama: "ABDILLAH RIFQI AN-NIZAR", jk: "L" },
+            { kelas: "X-1", nis: "10001", nama: "ABIMANA HIDAYA JATI AB", jk: "L" },
+            { kelas: "XI-1", nis: "10501", nama: "BINTANG RAMADHAN PUTRA", jk: "L" }
+        ];
+
+        let studentsData = JSON.parse(localStorage.getItem('siap_students_data')) || INITIAL_STUDENTS;
+        let attendanceRecords = JSON.parse(localStorage.getItem('siap_attendance_records')) || [];
+        let disciplineRecords = JSON.parse(localStorage.getItem('siap_discipline_records')) || [];
+        let currentUser = JSON.parse(localStorage.getItem('siap_current_user')) || null;
+        let activeTab = 'dashboard';
+        let html5QrScanner = null;
+
+        function saveStudentsData() { localStorage.setItem('siap_students_data', JSON.stringify(studentsData)); }
+        function saveAttendance() { localStorage.setItem('siap_attendance_records', JSON.stringify(attendanceRecords)); }
+        function saveDiscipline() { localStorage.setItem('siap_discipline_records', JSON.stringify(disciplineRecords)); }
+    </script>
+
+    <div id="appContainer" class="flex-grow flex flex-col">
+
+        <!-- VIEW 1: LOGIN PAGE -->
+        <div id="loginView" class="min-h-screen flex flex-col lg:flex-row bg-slate-900 text-slate-100">
+            <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-12 lg:p-16 bg-slate-900 border-r border-slate-800">
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="h-12 w-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                            <i class="fa-solid fa-kaaba"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs uppercase tracking-widest text-emerald-400 font-semibold">Sistem Presensi & Kedisiplinan Digital</span>
+                            <h1 class="text-xl font-bold tracking-tight text-white">SIAP SMANIKRE</h1>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 mb-10">
+                        <h2 class="text-3xl font-extrabold text-white">Selamat Datang di <span class="text-emerald-400">SIAP SMANIKRE</span></h2>
+                        <p class="mt-2 text-slate-400 text-sm">Platform Pengelolaan Presensi PAI, Pembiasaan Ibadah, dan Catatan Kedisiplinan SMAN 1 Krembung Sidoarjo.</p>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700/80 p-6 rounded-2xl shadow-xl">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-user-lock text-emerald-400"></i> Masuk Akun Guru PAI
+                        </h3>
+
+                        <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">NIP / Nama Guru</label>
+                                <input type="text" id="inputUsername" required placeholder="Masukkan NIP atau Nama Guru" 
+                                    class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Password (NIP / 0)</label>
+                                <input type="password" id="inputPassword" required placeholder="Masukkan Password" 
+                                    class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                            </div>
+                            <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow transition">
+                                Masuk ke Sistem
+                            </button>
+                        </form>
+
+                        <div class="mt-6 pt-4 border-t border-slate-700">
+                            <span class="block text-xs text-slate-400 mb-2">Pintasan Masuk Cepat:</span>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="quickLogin('197410101998022001')" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-slate-600">Bu Ulfatul Husna</button>
+                                <button onclick="quickLogin('198911052025211030')" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-slate-600">Pak Solichul</button>
+                                <button onclick="quickLogin('0')" class="px-2.5 py-1 bg-slate-700 text-xs text-amber-300 rounded hover:bg-slate-600">Pak Anas (GTT)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 text-xs text-slate-500">&copy; 2026 SMAN 1 Krembung. Integrasi Google Sheets API Active.</div>
+            </div>
+
+            <div class="w-full lg:w-1/2 bg-gradient-to-br from-emerald-950 to-slate-900 flex flex-col justify-center items-center p-8 text-center">
+                <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhjhEe7DsQaweQWtckuBY0QdRPB_J0RbHqfSXb0fFnNGOQYwfzbn9SyTV1WORteNpd7S3rcGj3FYpaCf0X7tjQpcXoDfErD-aWPD9kTf-6auJIoAZ3ETmXpvuoVydS7H87HO-vidqv4ECyayUG4dFJNZNMuVWD2lUyaMaF7ox5BYCfAksicgx7ryvy6V56Z/s1600/LOGO%20SMANIKRE%20(1).png" 
+                     alt="Logo SMANIKRE" class="w-40 h-40 object-contain mb-6 drop-shadow-lg">
+                <h2 class="text-2xl font-bold text-white uppercase tracking-wide">SMA Negeri 1 Krembung</h2>
+                <p class="text-emerald-400 text-xs font-semibold uppercase mt-2 max-w-md">Beriman, Bertaqwa, Berakhlaq Mulia, Berprestasi, Mandiri, Berbudaya Lingkungan</p>
+            </div>
+        </div>
+
+        <!-- VIEW 2: MAIN DASHBOARD AREA -->
+        <div id="dashboardView" class="hidden min-h-screen flex flex-col bg-slate-100">
+            <!-- HEADER -->
+            <header class="bg-emerald-900 text-white shadow-md sticky top-0 z-30 no-print">
+                <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhjhEe7DsQaweQWtckuBY0QdRPB_J0RbHqfSXb0fFnNGOQYwfzbn9SyTV1WORteNpd7S3rcGj3FYpaCf0X7tjQpcXoDfErD-aWPD9kTf-6auJIoAZ3ETmXpvuoVydS7H87HO-vidqv4ECyayUG4dFJNZNMuVWD2lUyaMaF7ox5BYCfAksicgx7ryvy6V56Z/s1600/LOGO%20SMANIKRE%20(1).png" class="w-9 h-9 object-contain bg-white/10 p-1 rounded-lg">
+                        <div>
+                            <h1 class="font-bold text-base leading-none">SIAP SMANIKRE</h1>
+                            <p class="text-[10px] text-emerald-300">SMAN 1 Krembung</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right text-xs hidden sm:block">
+                            <span id="navUserName" class="font-semibold block">Guru PAI</span>
+                            <span id="navUserRole" class="text-emerald-300 text-[10px]">NIP. -</span>
+                        </div>
+                        <button onclick="handleLogout()" class="bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                            <i class="fa-solid fa-right-from-bracket mr-1"></i> Keluar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- NAVIGATION BAR -->
+                <nav class="bg-emerald-950 border-t border-emerald-800 px-4 overflow-x-auto custom-scrollbar">
+                    <div class="max-w-7xl mx-auto flex space-x-2 py-2 text-xs">
+                        <button onclick="switchTab('dashboard')" id="nav-tab-dashboard" class="px-3 py-2 rounded-lg font-medium bg-emerald-600 text-white"><i class="fa-solid fa-chart-line mr-1"></i> Dashboard</button>
+                        <button onclick="switchTab('siswa')" id="nav-tab-siswa" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-users mr-1"></i> Data Siswa</button>
+                        <button onclick="switchTab('presensi')" id="nav-tab-presensi" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-qrcode mr-1"></i> Presensi & QR Scanner</button>
+                        <button onclick="switchTab('kedisiplinan')" id="nav-tab-kedisiplinan" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-scale-balanced mr-1"></i> Catatan Kedisiplinan</button>
+                        <button onclick="switchTab('qrcard')" id="nav-tab-qrcard" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-id-card mr-1"></i> Cetak Kartu QR</button>
+                        <button onclick="switchTab('guru')" id="nav-tab-guru" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-user-group mr-1"></i> Data Guru</button>
+                    </div>
+                </nav>
+            </header>
+
+            <!-- MAIN CONTENT DISPLAY -->
+            <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+                <!-- TAB 1: DASHBOARD -->
+                <div id="content-dashboard" class="tab-content space-y-6">
+                    <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white rounded-2xl p-6 shadow-md flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold" id="dashWelcomeTitle">Assalamu'alaikum, Guru PAI</h2>
+                            <p class="text-emerald-100 text-xs mt-1">Sistem Terintegrasi Google Spreadsheet untuk Presensi & Pelanggaran Siswa.</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-emerald-200 block uppercase">Tanggal Hari Ini</span>
+                            <span id="dashCurrentDate" class="text-sm font-bold"></span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Total Siswa</p>
+                                <h3 id="statTotalSiswa" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                            </div>
+                            <i class="fa-solid fa-user-graduate text-emerald-600 text-2xl"></i>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Catatan Presensi</p>
+                                <h3 id="statTotalPresensi" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                            </div>
+                            <i class="fa-solid fa-clipboard-check text-blue-600 text-2xl"></i>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase">Total Pelanggaran</p>
+                                <h3 id="statTotalPelanggaran" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                            </div>
+                            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: DATA SISWA -->
+                <div id="content-siswa" class="tab-content hidden space-y-4">
+                    <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                        <h2 class="font-bold text-slate-800 text-lg">Data Siswa</h2>
+                        <button onclick="bukaModalTambahSiswa()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-plus mr-1"></i> Tambah Siswa
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-600">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 uppercase">
+                                <tr>
+                                    <th class="p-3">NIS</th>
+                                    <th class="p-3">Nama Siswa</th>
+                                    <th class="p-3">Kelas</th>
+                                    <th class="p-3">JK</th>
+                                    <th class="p-3 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableSiswaBody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 3: PRESENSI & SCANNER -->
+                <div id="content-presensi" class="tab-content hidden space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- FORM CATAT PRESENSI -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                                <i class="fa-solid fa-qrcode text-emerald-600"></i> Form Input Presensi
+                            </h3>
+                            <form onsubmit="handleSimpanPresensiManual(event)" class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Pilih Siswa</label>
+                                    <select id="presensiSelectSiswa" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:ring-2 focus:ring-emerald-500">
+                                        <option value="">-- Pilih Siswa --</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Kategori Kegiatan</label>
+                                    <select id="presensiKategori" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
+                                        <option value="Kehadiran Kelas PAI">Kehadiran Kelas PAI</option>
+                                        <option value="Sholat Dhuha Berjamaah">Sholat Dhuha Berjamaah</option>
+                                        <option value="Sholat Dhuhur/Ashar Berjamaah">Sholat Dhuhur/Ashar Berjamaah</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Status Kehadiran</label>
+                                    <select id="presensiStatus" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
+                                        <option value="Hadir">Hadir</option>
+                                        <option value="Izin">Izin</option>
+                                        <option value="Sakit">Sakit</option>
+                                        <option value="Alpha">Alpha</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow">
+                                    <i class="fa-solid fa-paper-plane mr-1"></i> Simpan & Kirim ke Spreadsheet
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- TABEL RIWAYAT PRESENSI -->
+                        <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                            <h3 class="font-bold text-slate-800 text-base">Riwayat Presensi Siswa</h3>
+                            <div class="overflow-x-auto max-h-96 custom-scrollbar">
+                                <table class="w-full text-left text-xs text-slate-600">
+                                    <thead class="bg-slate-50 border-b border-slate-200 uppercase sticky top-0">
+                                        <tr>
+                                            <th class="p-2.5">Waktu</th>
+                                            <th class="p-2.5">Siswa</th>
+                                            <th class="p-2.5">Kategori</th>
+                                            <th class="p-2.5">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablePresensiBody" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: CATATAN KEDISIPLINAN -->
+                <div id="content-kedisiplinan" class="tab-content hidden space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- FORM CATAT PELANGGARAN -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                                <i class="fa-solid fa-scale-balanced text-amber-600"></i> Catat Pelanggaran
+                            </h3>
+                            <form onsubmit="handleSimpanPelanggaran(event)" class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Pilih Siswa</label>
+                                    <select id="discSelectSiswa" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:ring-2 focus:ring-emerald-500">
+                                        <option value="">-- Pilih Siswa --</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Tingkat Pelanggaran</label>
+                                    <select id="discKategori" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
+                                        <option value="Ringan">Ringan</option>
+                                        <option value="Sedang">Sedang</option>
+                                        <option value="Berat">Berat</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Jenis Pelanggaran</label>
+                                    <input type="text" id="discJenis" required placeholder="Contoh: Terlambat, Tidak Sholat" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Poin Pelanggaran</label>
+                                    <input type="number" id="discPoin" required value="10" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Tindakan / Pembinaan</label>
+                                    <input type="text" id="discTindakan" required placeholder="Teguran Lisan / Pembinaan" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs">
+                                </div>
+                                <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs shadow">
+                                    <i class="fa-solid fa-paper-plane mr-1"></i> Simpan & Kirim ke Spreadsheet
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- TABEL PELANGGARAN -->
+                        <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                            <h3 class="font-bold text-slate-800 text-base">Daftar Pelanggaran Siswa</h3>
+                            <div class="overflow-x-auto max-h-96 custom-scrollbar">
+                                <table class="w-full text-left text-xs text-slate-600">
+                                    <thead class="bg-slate-50 border-b border-slate-200 uppercase sticky top-0">
+                                        <tr>
+                                            <th class="p-2.5">Tanggal</th>
+                                            <th class="p-2.5">Siswa</th>
+                                            <th class="p-2.5">Pelanggaran</th>
+                                            <th class="p-2.5">Poin</th>
+                                            <th class="p-2.5">Pelapor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableDisciplineBody" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5: CETAK KARTU QR -->
+                <div id="content-qrcard" class="tab-content hidden space-y-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center no-print">
+                        <h2 class="font-bold text-slate-800 text-lg">Kartu Presensi QR Siswa</h2>
+                        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold">
+                            <i class="fa-solid fa-print mr-1"></i> Cetak Kartu
+                        </button>
+                    </div>
+                    <div id="qrCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+                </div>
+
+                <!-- TAB 6: DATA GURU -->
+                <div id="content-guru" class="tab-content hidden space-y-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h2 class="font-bold text-slate-800 text-lg mb-4">Daftar Guru PAI SMAN 1 Krembung</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs text-slate-600">
+                                <thead class="bg-slate-50 border-b border-slate-200 uppercase">
+                                    <tr>
+                                        <th class="p-3">Nama Guru</th>
+                                        <th class="p-3">NIP</th>
+                                        <th class="p-3">Golongan</th>
+                                        <th class="p-3">Jabatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableGuruBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH SISWA -->
+    <div id="modalSiswa" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 class="font-bold text-slate-800 text-base">Tambah Data Siswa</h3>
+            <form onsubmit="handleSimpanSiswa(event)" class="space-y-3">
+                <input type="text" id="modalSiswaNis" placeholder="NIS Siswa" required class="w-full p-2.5 border rounded-xl text-xs">
+                <input type="text" id="modalSiswaNama" placeholder="Nama Lengkap Siswa" required class="w-full p-2.5 border rounded-xl text-xs">
+                <input type="text" id="modalSiswaKelas" placeholder="Kelas (contoh: XII-1)" required class="w-full p-2.5 border rounded-xl text-xs">
+                <select id="modalSiswaJk" class="w-full p-2.5 border rounded-xl text-xs">
+                    <option value="L">Laki-laki</option>
+                    <option value="P">Perempuan</option>
+                </select>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="tutupModalTambahSiswa()" class="px-4 py-2 bg-slate-200 text-xs rounded-xl font-semibold">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-xs rounded-xl font-semibold">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 3. EVENT HANDLERS & LOGIK APLIKASI
+        // ==========================================
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('inputUsername').value.trim();
+            const pass = document.getElementById('inputPassword').value.trim();
+
+            const guru = DATA_GURU.find(g => (g.nip === username || g.nama.toLowerCase().includes(username.toLowerCase())) && (g.nip === pass || pass === '0'));
+
+            if (guru) {
+                currentUser = guru;
+                localStorage.setItem('siap_current_user', JSON.stringify(guru));
+                renderApp();
+            } else {
+                alert("Login Gagal! NIP atau Password salah.");
+            }
+        }
+
+        function quickLogin(nip) {
+            const guru = DATA_GURU.find(g => g.nip === nip);
+            if (guru) {
+                currentUser = guru;
+                localStorage.setItem('siap_current_user', JSON.stringify(guru));
+                renderApp();
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem('siap_current_user');
+            document.getElementById('loginView').classList.remove('hidden');
+            document.getElementById('dashboardView').classList.add('hidden');
+        }
+
+        function switchTab(tabName) {
+            activeTab = tabName;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.className = "nav-btn px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900");
+
+            const currentTabEl = document.getElementById('content-' + tabName);
+            if (currentTabEl) currentTabEl.classList.remove('hidden');
+
+            const currentNavBtn = document.getElementById('nav-tab-' + tabName);
+            if (currentNavBtn) currentNavBtn.className = "nav-btn px-3 py-2 rounded-lg font-medium bg-emerald-600 text-white shadow";
+
+            if (tabName === 'qrcard') renderQRCards();
+        }
+
+        function renderApp() {
+            if (!currentUser) return;
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('dashboardView').classList.remove('hidden');
+
+            document.getElementById('navUserName').innerText = currentUser.nama;
+            document.getElementById('navUserRole').innerText = "NIP. " + currentUser.nip;
+            document.getElementById('dashWelcomeTitle').innerText = "Assalamu'alaikum, " + currentUser.nama;
+            document.getElementById('dashCurrentDate').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            renderStats();
+            renderTableSiswa();
+            renderTablePresensi();
+            renderTableDiscipline();
+            renderTableGuru();
+            populateSelectSiswa();
+        }
+
+        function renderStats() {
+            document.getElementById('statTotalSiswa').innerText = studentsData.length;
+            document.getElementById('statTotalPresensi').innerText = attendanceRecords.length;
+            document.getElementById('statTotalPelanggaran').innerText = disciplineRecords.length;
+        }
+
+        function renderTableSiswa() {
+            const tbody = document.getElementById('tableSiswaBody');
+            tbody.innerHTML = studentsData.map(s => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-medium">${s.nis}</td>
+                    <td class="p-3 font-semibold text-slate-800">${s.nama}</td>
+                    <td class="p-3">${s.kelas}</td>
+                    <td class="p-3">${s.jk}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="hapusSiswa('${s.nis}')" class="text-rose-600 hover:underline text-xs"><i class="fa-solid fa-trash"></i> Hapus</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function populateSelectSiswa() {
+            const options = studentsData.map(s => `<option value="${s.nis}">${s.nama} (${s.kelas})</option>`).join('');
+            document.getElementById('presensiSelectSiswa').innerHTML = '<option value="">-- Pilih Siswa --</option>' + options;
+            document.getElementById('discSelectSiswa').innerHTML = '<option value="">-- Pilih Siswa --</option>' + options;
+        }
+
+        // ==========================================
+        // 4. PEMPROSESAN PRESENSI & GOOGLE SHEETS
+        // ==========================================
+        function handleSimpanPresensiManual(e) {
+            e.preventDefault();
+            const nis = document.getElementById('presensiSelectSiswa').value;
+            const siswa = studentsData.find(s => s.nis === nis);
+            if (!siswa) return;
+
+            const dataPresensi = {
+                id: 'att_' + Date.now(),
+                nis: siswa.nis,
+                nama: siswa.nama,
+                kelas: siswa.kelas,
+                tanggal: new Date().toISOString().split('T')[0],
+                waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                kategori: document.getElementById('presensiKategori').value,
+                status: document.getElementById('presensiStatus').value,
+                pencatat: currentUser.nama
+            };
+
+            // 1. Simpan ke LocalStorage
+            attendanceRecords.unshift(dataPresensi);
+            saveAttendance();
+            renderTablePresensi();
+            renderStats();
+
+            // 2. Kirim Otomatis ke Google Spreadsheet
+            kirimKeSpreadsheet({
+                action: "presensi",
+                tanggal: dataPresensi.tanggal,
+                waktu: dataPresensi.waktu,
+                nis: dataPresensi.nis,
+                nama: dataPresensi.nama,
+                kelas: dataPresensi.kelas,
+                kategori: dataPresensi.kategori,
+                status: dataPresensi.status,
+                pencatat: dataPresensi.pencatat
+            });
+
+            alert('Presensi berhasil disimpan dan dikirim ke Google Sheets!');
+        }
+
+        function renderTablePresensi() {
+            document.getElementById('tablePresensiBody').innerHTML = attendanceRecords.slice(0, 30).map(r => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2.5 font-medium text-slate-500">${r.tanggal} ${r.waktu}</td>
+                    <td class="p-2.5 font-semibold text-slate-800">${r.nama} <span class="text-[10px] text-slate-400">(${r.kelas})</span></td>
+                    <td class="p-2.5">${r.kategori}</td>
+                    <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.status==='Hadir'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${r.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // ==========================================
+        // 5. PEMPROSESAN PELANGGARAN & GOOGLE SHEETS
+        // ==========================================
+        function handleSimpanPelanggaran(e) {
+            e.preventDefault();
+            const nis = document.getElementById('discSelectSiswa').value;
+            const siswa = studentsData.find(s => s.nis === nis);
+            if (!siswa) return;
+
+            const dataPelanggaran = {
+                id: 'disc_' + Date.now(),
+                nis: siswa.nis,
+                nama: siswa.nama,
+                kelas: siswa.kelas,
+                tanggal: new Date().toISOString().split('T')[0],
+                kategori: document.getElementById('discKategori').value,
+                jenis: document.getElementById('discJenis').value,
+                poin: parseInt(document.getElementById('discPoin').value),
+                tindakan: document.getElementById('discTindakan').value,
+                pelapor: currentUser.nama
+            };
+
+            // 1. Simpan ke LocalStorage
+            disciplineRecords.unshift(dataPelanggaran);
+            saveDiscipline();
+            renderTableDiscipline();
+            renderStats();
+
+            // 2. Kirim Otomatis ke Google Spreadsheet
+            kirimKeSpreadsheet({
+                action: "pelanggaran",
+                tanggal: dataPelanggaran.tanggal,
+                nis: dataPelanggaran.nis,
+                nama: dataPelanggaran.nama,
+                kelas: dataPelanggaran.kelas,
+                kategori: dataPelanggaran.kategori,
+                jenis: dataPelanggaran.jenis,
+                poin: dataPelanggaran.poin,
+                tindakan: dataPelanggaran.tindakan,
+                pelapor: dataPelanggaran.pelapor
+            });
+
+            alert('Catatan Pelanggaran berhasil disimpan dan dikirim ke Google Sheets!');
+        }
+
+        function renderTableDiscipline() {
+            document.getElementById('tableDisciplineBody').innerHTML = disciplineRecords.map(r => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2.5 text-slate-500">${r.tanggal}</td>
+                    <td class="p-2.5 font-semibold text-slate-800">${r.nama} <span class="text-[10px] text-slate-400">(${r.kelas})</span></td>
+                    <td class="p-2.5">${r.jenis}</td>
+                    <td class="p-2.5 font-bold text-amber-600">+${r.poin}</td>
+                    <td class="p-2.5 text-slate-500">${r.pelapor}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderTableGuru() {
+            document.getElementById('tableGuruBody').innerHTML = DATA_GURU.map(g => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-semibold text-slate-800">${g.nama}</td>
+                    <td class="p-3 text-slate-500">${g.nip}</td>
+                    <td class="p-3">${g.gol}</td>
+                    <td class="p-3">${g.jabatan}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderQRCards() {
+            const container = document.getElementById('qrCardsContainer');
+            container.innerHTML = '';
+            studentsData.slice(0, 12).forEach((s, idx) => {
+                const cardId = `qrcode_card_${idx}`;
+                container.innerHTML += `
+                    <div class="bg-white border p-4 rounded-xl shadow-sm text-center space-y-2">
+                        <h4 class="font-bold text-xs text-slate-800">${s.nama}</h4>
+                        <p class="text-[10px] text-slate-500">${s.kelas} | NIS: ${s.nis}</p>
+                        <div id="${cardId}" class="flex justify-center my-2"></div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    new QRCode(document.getElementById(cardId), { text: s.nis, width: 90, height: 90 });
+                }, 100);
+            });
+        }
+
+        function bukaModalTambahSiswa() { document.getElementById('modalSiswa').classList.remove('hidden'); }
+        function tutupModalTambahSiswa() { document.getElementById('modalSiswa').classList.add('hidden'); }
+
+        function handleSimpanSiswa(e) {
+            e.preventDefault();
+            const nis = document.getElementById('modalSiswaNis').value.trim();
+            const nama = document.getElementById('modalSiswaNama').value.trim();
+            const kelas = document.getElementById('modalSiswaKelas').value.trim();
+            const jk = document.getElementById('modalSiswaJk').value;
+
+            studentsData.push({ nis, nama, kelas, jk });
+            saveStudentsData();
+            renderTableSiswa();
+            populateSelectSiswa();
+            renderStats();
+            tutupModalTambahSiswa();
+        }
+
+        function hapusSiswa(nis) {
+            if (confirm("Apakah Anda yakin ingin menghapus siswa ini?")) {
+                studentsData = studentsData.filter(s => s.nis !== nis);
+                saveStudentsData();
+                renderTableSiswa();
+                populateSelectSiswa();
+                renderStats();
+            }
+        }
+
+        // Inisialisasi saat Halaman Dimuat
+        window.addEventListener('DOMContentLoaded', () => {
+            if (currentUser) renderApp();
         });
-        console.log("Data berhasil dikirim ke Spreadsheet.");
-    } catch (err) {
-        console.error("Gagal mengirim data ke Spreadsheet:", err);
-    }
-}
+    </script>
+</body>
+</html>
