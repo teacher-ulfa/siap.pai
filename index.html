@@ -722,21 +722,20 @@
                 s.kelas.toLowerCase().includes(searchQuery.toLowerCase())
             );
 
-            // Fungsi pembantu untuk memproses data mentah menjadi data bersih ber-ID Unik
+            // Fungsi pembantu untuk memproses baris mentah menjadi objek siswa ber-ID Unik aman
             const processNewStudents = (rawRows) => {
                 const newStudents = [];
                 rawRows.forEach((b, index) => {
                     if(b.trim() === '') return;
                     const parts = b.split(/[,;|\t]/).map(p => p.trim());
                     if(parts.length >= 3) {
-                        // Lewati baris header jika ada
                         if (index === 0 && (parts[0].toLowerCase() === 'nis' || parts[1].toLowerCase() === 'nama')) return;
                         
                         const nisVal = parts[0] && parts[0] !== '0' && parts[0] !== '-' ? parts[0] : '';
                         const namaVal = parts[1];
                         const kelasVal = parts[2];
                         
-                        // Buat ID unik aman meskipun NIS sama/kosong
+                        // ID Unik dijamin tidak bentrok meskipun NIS sama, 0, atau kosong
                         const idUnik = nisVal ? `NIS-${nisVal}` : `KLS-${kelasVal}-${namaVal.replace(/\s+/g, '')}-${Date.now()}-${Math.floor(Math.random()*1000)}`;
 
                         newStudents.push({
@@ -761,9 +760,9 @@
                     const newStudents = processNewStudents(baris);
 
                     if(newStudents.length > 0) {
-                        // Gabungkan tanpa duplikasi berdasarkan idUnik atau nama+kelas
                         const combined = [...siswaList];
                         newStudents.forEach(ns => {
+                            // Cek duplikasi berdasarkan idUnik atau nama+kelas yang sama persis
                             const existingIdx = combined.findIndex(s => s.idUnik === ns.idUnik || (s.nama.toLowerCase() === ns.nama.toLowerCase() && s.kelas.toLowerCase() === ns.kelas.toLowerCase()));
                             if(existingIdx >= 0) {
                                 combined[existingIdx] = ns;
@@ -877,7 +876,7 @@
                                 <tbody className="divide-y divide-gray-100">
                                     {filteredSiswaTable.map((row) => (
                                         <tr key={row.idUnik} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-gray-600">{row.nis || <span className="text-gray-400 italic">Belum ada NIS</span>}</td>
+                                            <td className="px-6 py-4 text-gray-600">{row.nis || <span className="text-gray-400 italic">Tanpa NIS</span>}</td>
                                             <td className="px-6 py-4 font-medium text-gray-900">{row.nama}</td>
                                             <td className="px-6 py-4 text-gray-600 font-semibold">{row.kelas}</td>
                                             <td className="px-6 py-4 text-center">
