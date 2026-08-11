@@ -1,0 +1,30 @@
+// ==========================================
+// KONFIGURASI GOOGLE APPS SCRIPT
+// ==========================================
+// Ganti string di bawah dengan URL Web App Apps Script milik Anda:
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec"; 
+
+/**
+ * Fungsi untuk mengirim data ke Google Sheets
+ * @param {Object} dataPayload 
+ */
+async function kirimKeSpreadsheet(dataPayload) {
+    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycb...")) {
+        console.warn("URL Google Apps Script belum dikonfigurasi.");
+        return;
+    }
+
+    try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(dataPayload)
+        });
+        console.log("Data berhasil dikirim ke Spreadsheet.");
+    } catch (err) {
+        console.error("Gagal mengirim data ke Spreadsheet:", err);
+    }
+}
