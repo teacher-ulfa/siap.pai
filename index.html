@@ -65,7 +65,7 @@
             { nama: 'Anas Imron Hamza, S.Pd.', nip: '0', pangkat: 'Guru Tidak Tetap' }
         ];
 
-        // Daftar 36 Kelas untuk SMAN 1 Krembung (X, XI, XII masing-masing 12 kelas atau variatif)
+        // Daftar 36 Kelas untuk SMAN 1 Krembung (X, XI, XII masing-masing 12 kelas)
         const KELAS_LIST = [
             'X-1', 'X-2', 'X-3', 'X-4', 'X-5', 'X-6', 'X-7', 'X-8', 'X-9', 'X-10', 'X-11', 'X-12',
             'XI-1', 'XI-2', 'XI-3', 'XI-4', 'XI-5', 'XI-6', 'XI-7', 'XI-8', 'XI-9', 'XI-10', 'XI-11', 'XI-12',
@@ -498,7 +498,7 @@
                                         {siswaInClass.length === 0 && (
                                             <tr>
                                                 <td colSpan="3" className="px-6 py-8 text-center text-gray-500">
-                                                    Tidak ada siswa yang terdaftar di kelas <strong>{selectedKelas}</strong>. Silakan periksa kembali data di menu Data Siswa.
+                                                    Tidak ada siswa terdaftar di kelas <strong>{selectedKelas}</strong>.
                                                 </td>
                                             </tr>
                                         )}
@@ -837,7 +837,7 @@
                             <button onClick={() => setShowQRModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
                                 <i className="ph ph-qr-code text-lg"></i> Cetak QR Massal
                             </button>
-                            <button onClick={handleClearAllSiswa} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-red-200">
+                            <button onClick={handleClearAllSiswa} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-red-200" title="Kosongkan Semua Siswa">
                                 <i className="ph ph-trash text-base"></i>
                             </button>
                         </div>
@@ -927,7 +927,7 @@
                                         <select 
                                             value={qrFilterKelas}
                                             onChange={(e) => setQrFilterKelas(e.target.value)}
-                                            className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none bg-white"
+                                            className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none bg-white font-medium"
                                         >
                                             <option value="">Semua Kelas</option>
                                             {KELAS_LIST.map(k => <option key={k} value={k}>{k}</option>)}
@@ -1082,11 +1082,12 @@
                         { facingMode: "environment" },
                         { fps: 5, qrbox: { width: 250, height: 250 } },
                         async (decodedText) => {
+                            const cleanText = decodedText.trim();
                             const now = Date.now();
-                            if (lastScannedRef.current.text === decodedText && (now - lastScannedRef.current.time < 3000)) {
+                            if (lastScannedRef.current.text === cleanText && (now - lastScannedRef.current.time < 3000)) {
                                 return; 
                             }
-                            lastScannedRef.current = { text: decodedText, time: now };
+                            lastScannedRef.current = { text: cleanText, time: now };
                             
                             const today = new Date();
                             if (today.getDay() === 0 || today.getDay() === 6) {
@@ -1094,9 +1095,10 @@
                                 return;
                             }
 
-                            const siswaObj = siswaList.find(s => s.nis.trim() === decodedText.trim());
+                            // Pencocokan NIS secara fleksibel (mengabaikan spasi atau case-sensitive)
+                            const siswaObj = siswaList.find(s => s.nis.trim() === cleanText);
                             if (!siswaObj) {
-                                showToast(`NIS ${decodedText} tidak ditemukan dalam database siswa.`, "error");
+                                showToast(`NIS "${cleanText}" tidak ditemukan dalam database siswa.`, "error");
                                 return;
                             }
 
@@ -1231,7 +1233,7 @@
             const [publicView, setPublicView] = React.useState(null);
             const [toast, setToast] = React.useState(null);
             
-            // State Siswa yang tersinkronisasi secara permanen ke LocalStorage ( Mendukung ribuan data siswa )
+            // State Siswa yang tersinkronisasi secara permanen ke LocalStorage (Mendukung ribuan data siswa)
             const [siswaList, setSiswaList] = React.useState(() => {
                 const savedSiswa = localStorage.getItem('siap_siswa_list_v2');
                 if (savedSiswa) {
@@ -1349,3 +1351,4 @@
     </script>
 </body>
 </html>
+```eof
