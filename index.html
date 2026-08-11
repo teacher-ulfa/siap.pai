@@ -3,728 +3,1349 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIAP SMANIKRE - Sistem Informasi, Absensi & Kedisiplinan SMAN 1 Krembung</title>
+    <title>SIAP - SMAN 1 Krembung</title>
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- HTML5 QR Code Scanner Library -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- QRCodeJS Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- JSZip Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- SheetJS Excel Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- React & ReactDOM (UMD) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX compilation in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            800: '#166534',
-                            900: '#14532d',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Html5 QR Code Scanner -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
     <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Print Styles for QR Code */
         @media print {
-            body { background: white !important; color: black !important; }
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            .page-break { page-break-after: always; }
         }
-        .print-only { display: none; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+<body>
+    <div id="root"></div>
 
-    <script>
-        // ==========================================
-        // 1. KONFIGURASI GOOGLE APPS SCRIPT URL
-        // ==========================================
-        // GANTI URL DI BAWAH DENGAN URL WEB APP HASIL DEPLOY GOOGLE APPS SCRIPT ANDA
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_c5Q141OuSYCo91Zph6lixvWfYzhGBlubez10T10OtjIYTnRv9LoUh7f7vnfp4WTR_g/exec"; 
-
-        /**
-         * Kirim Data ke Google Spreadsheet secara asynchronous
-         */
-        async function kirimKeSpreadsheet(dataPayload) {
-            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("AKfycbx...")) {
-                console.warn("[Google Sheets API] URL belum dikonfigurasi.");
-                return;
-            }
-
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(dataPayload)
-                });
-                console.log("[Google Sheets API] Data berhasil dikirim:", dataPayload.action);
-            } catch (err) {
-                console.error("[Google Sheets API] Gagal mengirim data:", err);
-            }
-        }
-
-        // ==========================================
-        // 2. DATA UTAMA & STATE GLOBAL
-        // ==========================================
-        const SMANIKRE_LOGO_URL = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhjhEe7DsQaweQWtckuBY0QdRPB_J0RbHqfSXb0fFnNGOQYwfzbn9SyTV1WORteNpd7S3rcGj3FYpaCf0X7tjQpcXoDfErD-aWPD9kTf-6auJIoAZ3ETmXpvuoVydS7H87HO-vidqv4ECyayUG4dFJNZNMuVWD2lUyaMaF7ox5BYCfAksicgx7ryvy6V56Z/s1600/LOGO%20SMANIKRE%20(1).png";
-
-        const DATA_GURU = [
-            { id: 1, nama: "Ulfatul Husna, M.Pd.", nip: "197410101998022001", gol: "IV/c", jabatan: "Pembina Utama Muda", mapel: "PAI" },
-            { id: 2, nama: "Muchammad Solichul Muhtadin, S.Pd.I", nip: "198911052025211030", gol: "IX", jabatan: "Guru PAI", mapel: "PAI" },
-            { id: 3, nama: "M. ZAIM AFFAN, S.Pd.I", nip: "199108082025211026", gol: "IX", jabatan: "Guru PAI", mapel: "PAI" },
-            { id: 4, nama: "ASRI WIYANTI, S.Pd.I", nip: "199304102025212037", gol: "IX", jabatan: "Guru PAI", mapel: "PAI" },
-            { id: 5, nama: "Anas Imron Hamza, S.Pd.", nip: "0", gol: "-", jabatan: "Guru Tidak Tetap (GTT)", mapel: "PAI" }
+    <script type="text/babel">
+        // URL Google Apps Script untuk sinkronisasi data ke Spreadsheet
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbw9ayDKpnvGApYOASgfXNmLRvNjpy88doHA7LIzFFIydRYqlCdHk4ggLFQgA33HB5N3Nw/exec";
+        const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1HF1Yw0ySUn61dxJ8iInQ_btIcA7owVgaoaYhPnU8d8k/edit?usp=sharing";
+        
+        const ADMIN_EMAILS = [
+            'pembelajaranulfa@gmail.com', 
+            'ulfatulhusna00@guru.sma.belajar.id', 
+            'ulfatulhusna26@gmail.com'
         ];
 
-        const INITIAL_STUDENTS = [
-            { kelas: "XII-1", nis: "11731", nama: "ADAMA SEPTIAN KURNIAWAN", jk: "L" },
-            { kelas: "XII-1", nis: "11875", nama: "AJENG PUTRI RAHMAWATI", jk: "P" },
-            { kelas: "XII-1", nis: "11803", nama: "AKBAR PUTRA JAYA WARDANA", jk: "L" },
-            { kelas: "XII-2", nis: "11729", nama: "ABDILLAH RIFQI AN-NIZAR", jk: "L" },
-            { kelas: "X-1", nis: "10001", nama: "ABIMANA HIDAYA JATI AB", jk: "L" },
-            { kelas: "XI-1", nis: "10501", nama: "BINTANG RAMADHAN PUTRA", jk: "L" }
+        const GURU_PAI = [
+            { nama: 'Ulfatul Husna, M.Pd.', nip: '197410101998022001', pangkat: 'IV/c - Pembina Utama Muda', email: 'pembelajaranulfa@gmail.com' },
+            { nama: 'Muchammad Solichul Muhtadin, S.Pd.I', nip: '198911052025211030', pangkat: 'IX' },
+            { nama: 'M. ZAIM AFFAN, S.Pd.I', nip: '199108082025211026', pangkat: 'IX' },
+            { nama: 'ASRI WIYANTI, S.Pd.I', nip: '199304102025212037', pangkat: 'IX' },
+            { nama: 'Anas Imron Hamza, S.Pd.', nip: '0', pangkat: 'Guru Tidak Tetap' }
         ];
 
-        let studentsData = JSON.parse(localStorage.getItem('siap_students_data')) || INITIAL_STUDENTS;
-        let attendanceRecords = JSON.parse(localStorage.getItem('siap_attendance_records')) || [];
-        let disciplineRecords = JSON.parse(localStorage.getItem('siap_discipline_records')) || [];
-        let currentUser = JSON.parse(localStorage.getItem('siap_current_user')) || null;
-        let activeTab = 'dashboard';
-        let html5QrScanner = null;
+        // Daftar 36 Kelas untuk SMAN 1 Krembung (X, XI, XII masing-masing 12 kelas atau variatif)
+        const KELAS_LIST = [
+            'X-1', 'X-2', 'X-3', 'X-4', 'X-5', 'X-6', 'X-7', 'X-8', 'X-9', 'X-10', 'X-11', 'X-12',
+            'XI-1', 'XI-2', 'XI-3', 'XI-4', 'XI-5', 'XI-6', 'XI-7', 'XI-8', 'XI-9', 'XI-10', 'XI-11', 'XI-12',
+            'XII-1', 'XII-2', 'XII-3', 'XII-4', 'XII-5', 'XII-6', 'XII-7', 'XII-8', 'XII-9', 'XII-10', 'XII-11', 'XII-12'
+        ];
 
-        function saveStudentsData() { localStorage.setItem('siap_students_data', JSON.stringify(studentsData)); }
-        function saveAttendance() { localStorage.setItem('siap_attendance_records', JSON.stringify(attendanceRecords)); }
-        function saveDiscipline() { localStorage.setItem('siap_discipline_records', JSON.stringify(disciplineRecords)); }
-    </script>
+        const INITIAL_SISWA_LIST = [
+            { nis: '1001', nama: 'Abdullah Fachry', kelas: 'X-1' },
+            { nis: '1002', nama: 'Aisyah Putri', kelas: 'X-1' },
+            { nis: '1003', nama: 'Bagas Pratama', kelas: 'X-1' },
+            { nis: '1004', nama: 'Citra Kirana', kelas: 'X-2' },
+            { nis: '1005', nama: 'Deni Setiawan', kelas: 'X-2' },
+            { nis: '1006', nama: 'Eka Sari', kelas: 'XI-1' },
+            { nis: '1007', nama: 'Fajar Nugraha', kelas: 'XII-1' },
+        ];
 
-    <div id="appContainer" class="flex-grow flex flex-col">
+        const KATEGORI_PRESENSI = ['Kelas', 'Sholat Dhuha', 'Sholat Dzuhur', 'Sholat Ashar'];
+        const STATUS_PRESENSI = ['Hadir', 'Sakit', 'Ijin', 'Alpha', 'Dispensasi'];
+        const KATEGORI_DISIPLIN = ['Ringan', 'Sedang', 'Berat'];
+        const POIN_DISIPLIN = { 'Ringan': 10, 'Sedang': 20, 'Berat': 40 };
 
-        <!-- VIEW 1: LOGIN PAGE -->
-        <div id="loginView" class="min-h-screen flex flex-col lg:flex-row bg-slate-900 text-slate-100">
-            <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-12 lg:p-16 bg-slate-900 border-r border-slate-800">
-                <div>
-                    <div class="flex items-center space-x-3 mb-6">
-                        <div class="h-12 w-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                            <i class="fa-solid fa-kaaba"></i>
+        const Toast = ({ message, type, onClose }) => {
+            React.useEffect(() => {
+                const timer = setTimeout(onClose, 3000);
+                return () => clearTimeout(timer);
+            }, [onClose]);
+
+            const bgColor = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500';
+            return (
+                <div className={`fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 fade-in`}>
+                    {type === 'error' ? <i className="ph ph-warning-circle text-xl"></i> : <i className="ph ph-check-circle text-xl"></i>}
+                    <span>{message}</span>
+                </div>
+            );
+        };
+
+        const Card = ({ children, className = "" }) => (
+            <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Login = ({ onLogin, onPublicAccess }) => {
+            const [nama, setNama] = React.useState('');
+            const [nip, setNip] = React.useState('');
+            const [error, setError] = React.useState('');
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setError('');
+                
+                const user = GURU_PAI.find(g => g.nama.toLowerCase() === nama.toLowerCase() && g.nip === nip);
+                
+                if (user) {
+                    let role = 'guru';
+                    if (user.email && ADMIN_EMAILS.includes(user.email)) {
+                        role = 'admin';
+                    }
+                    onLogin({ ...user, role }, 'dashboard');
+                } else {
+                    setError('Nama atau NIP tidak sesuai. Jika tidak memiliki NIP, masukkan angka 0.');
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col md:flex-row bg-white">
+                    <div className="md:w-1/2 bg-emerald-600 text-white flex flex-col justify-center items-center p-6 md:p-10 text-center relative overflow-hidden">
+                        <div className="bg-white p-2.5 rounded-full shadow-lg mb-4 z-10">
+                             <img 
+                                src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhjhEe7DsQaweQWtckuBY0QdRPB_J0RbHqfSXb0fFnNGOQYwfzbn9SyTV1WORteNpd7S3rcGj3FYpaCf0X7tjQpcXoDfErD-aWPD9kTf-6auJIoAZ3ETmXpvuoVydS7H87HO-vidqv4ECyayUG4dFJNZNMuVWD2lUyaMaF7ox5BYCfAksicgx7ryvy6V56Z/s1600/LOGO%20SMANIKRE%20(1).png" 
+                                alt="Logo SMAN 1 Krembung" 
+                                className="w-16 h-16 md:w-20 md:h-20 object-contain"
+                            />
+                        </div>
+                        <h1 className="text-lg md:text-xl font-bold mb-2 text-center z-10">SMA Negeri 1 Krembung</h1>
+                        
+                        <p className="text-emerald-100 max-w-sm text-[8px] md:text-[9px] text-center font-medium leading-relaxed italic mb-5 z-10">
+                            “TERBENTUKNYA MANUSIA YANG BERIMAN DAN BERTAQWA, BERAKHLAQ MULIA, BERPRESTASI, MANDIRI, SERTA BERBUDAYA LINGKUNGAN”
+                        </p>
+                        
+                        <div className="w-full max-w-xs space-y-2 z-10">
+                            <p className="text-[10px] text-emerald-200 uppercase tracking-wider font-semibold">Pintasan Akses Publik / Asisten:</p>
+                            <div className="flex gap-2">
+                                <button onClick={() => onPublicAccess('scan')} className="flex-1 p-2 rounded-xl flex items-center justify-center gap-1.5 transition-all border shadow-sm bg-white/20 hover:bg-white/30 text-white border-white/30 text-xs font-semibold backdrop-blur-sm">
+                                    <i className="ph ph-qr-code text-base"></i>
+                                    <span>Scan QR</span>
+                                </button>
+                                <button onClick={() => onPublicAccess('disiplin')} className="flex-1 p-2 rounded-xl flex items-center justify-center gap-1.5 transition-all border shadow-sm bg-white/20 hover:bg-white/30 text-white border-white/30 text-xs font-semibold backdrop-blur-sm">
+                                    <i className="ph ph-warning-octagon text-base"></i>
+                                    <span>Kedisiplinan</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-emerald-500 rounded-full blur-3xl opacity-50"></div>
+                        <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-emerald-700 rounded-full blur-3xl opacity-50"></div>
+                    </div>
+
+                    <div className="md:w-1/2 flex items-center justify-center p-8 bg-gray-50">
+                        <Card className="w-full max-w-md p-8 shadow-xl border-0">
+                            <div className="text-center mb-8">
+                                <h2 className="text-2xl font-bold text-gray-800">
+                                    Selamat Datang di SIAP
+                                </h2>
+                                <p className="mt-2 text-sm text-gray-500">
+                                    Sistem Informasi dan Absensi PAI (Akses Login Guru & Admin)
+                                </p>
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm flex items-start gap-2">
+                                    <i className="ph ph-warning-circle text-lg mt-0.5"></i>
+                                    <span>{error}</span>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleLogin} className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap Guru PAI</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                        placeholder="Contoh: Ulfatul Husna, M.Pd."
+                                        value={nama}
+                                        onChange={(e) => setNama(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">NIP / Password (Ketik 0 jika Non-NIP)</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                        placeholder="Masukkan NIP atau angka 0"
+                                        value={nip}
+                                        onChange={(e) => setNip(e.target.value)}
+                                    />
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2 mt-4 shadow-sm"
+                                >
+                                    <span>Masuk ke Sistem</span>
+                                    <i className="ph ph-sign-in"></i>
+                                </button>
+                            </form>
+                        </Card>
+                    </div>
+                </div>
+            );
+        };
+
+        const Sidebar = ({ currentView, setView, user, onLogout }) => {
+            const menuItems = [
+                { id: 'dashboard', icon: 'squares-four', label: 'Dashboard' },
+                { id: 'absen', icon: 'clipboard-text', label: 'Kelola Absen' },
+                { id: 'disiplin', icon: 'warning-octagon', label: 'Kedisiplinan' },
+                { id: 'data-siswa', icon: 'users', label: 'Data Siswa' },
+                { id: 'data-guru', icon: 'chalkboard-teacher', label: 'Data Guru PAI' },
+                { id: 'laporan', icon: 'file-text', label: 'Laporan' },
+                { id: 'scan', icon: 'qr-code', label: 'Scan Absensi' },
+            ];
+
+            return (
+                <div className="w-64 bg-white border-r border-gray-200 h-screen fixed left-0 top-0 flex flex-col hidden md:flex">
+                    <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+                        <div className="bg-emerald-600 text-white p-2 rounded-lg">
+                            <i className="ph ph-book-bookmark text-2xl"></i>
                         </div>
                         <div>
-                            <span class="text-xs uppercase tracking-widest text-emerald-400 font-semibold">Sistem Presensi & Kedisiplinan Digital</span>
-                            <h1 class="text-xl font-bold tracking-tight text-white">SIAP SMANIKRE</h1>
+                            <h1 className="font-bold text-gray-800 text-lg leading-tight">SIAP PAI</h1>
+                            <span className="text-xs text-gray-500">SMAN 1 Krembung</span>
                         </div>
                     </div>
 
-                    <div class="mt-8 mb-10">
-                        <h2 class="text-3xl font-extrabold text-white">Selamat Datang di <span class="text-emerald-400">SIAP SMANIKRE</span></h2>
-                        <p class="mt-2 text-slate-400 text-sm">Platform Pengelolaan Presensi PAI, Pembiasaan Ibadah, dan Catatan Kedisiplinan SMAN 1 Krembung Sidoarjo.</p>
+                    <div className="flex-1 overflow-y-auto py-4">
+                        <nav className="space-y-1 px-3">
+                            {menuItems.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setView(item.id)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                                        currentView === item.id 
+                                        ? 'bg-emerald-50 text-emerald-700' 
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <i className={`ph ph-${item.icon} text-lg ${currentView === item.id ? 'text-emerald-600' : 'text-gray-400'}`}></i>
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
                     </div>
 
-                    <div class="bg-slate-800/80 border border-slate-700/80 p-6 rounded-2xl shadow-xl">
-                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                            <i class="fa-solid fa-user-lock text-emerald-400"></i> Masuk Akun Guru PAI
-                        </h3>
+                    <div className="p-4 border-t border-gray-100">
+                        <div className="bg-gray-50 p-3 rounded-lg flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                                {user.nama.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{user.nama}</p>
+                                <p className="text-xs text-gray-500 truncate capitalize">{user.role}</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={onLogout}
+                            className="w-full flex items-center justify-center gap-2 text-sm text-red-600 hover:bg-red-50 py-2 rounded-lg transition-colors font-medium"
+                        >
+                            <i className="ph ph-sign-out"></i>
+                            Keluar
+                        </button>
+                    </div>
+                </div>
+            );
+        };
 
-                        <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-4">
+        const Dashboard = ({ user, setView }) => {
+            const menus = [
+                { id: 'scan', title: 'Scan QR Code', desc: 'Presensi instan dengan scan ID Card.', icon: 'qr-code', color: 'bg-indigo-500' },
+                { id: 'absen', title: 'Kelola Absen', desc: 'Input kehadiran siswa di kelas dan sholat.', icon: 'clipboard-text', color: 'bg-blue-500' },
+                { id: 'disiplin', title: 'Catatan Kedisiplinan', desc: 'Catat pelanggaran ringan hingga berat.', icon: 'warning-octagon', color: 'bg-orange-500' },
+                { id: 'data-siswa', title: 'Data Siswa', desc: 'Lihat daftar siswa SMAN 1 Krembung.', icon: 'users', color: 'bg-emerald-500' },
+                { id: 'laporan', title: 'Laporan', desc: 'Rekap kehadiran & kedisiplinan.', icon: 'file-text', color: 'bg-purple-500' },
+            ];
+
+            return (
+                <div className="fade-in">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
+                        <p className="text-gray-600">Selamat datang kembali, <strong>{user.nama}</strong>. {user.role === 'admin' && <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full ml-2">Akses Admin</span>}</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {menus.map(menu => (
+                            <Card key={menu.id} className="hover:shadow-md transition-shadow cursor-pointer group">
+                                <div className="p-6" onClick={() => setView(menu.id)}>
+                                    <div className={`${menu.color} w-12 h-12 rounded-lg flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform`}>
+                                        <i className={`ph ph-${menu.icon} text-2xl`}></i>
+                                    </div>
+                                    <h3 className="font-semibold text-gray-800 mb-1">{menu.title}</h3>
+                                    <p className="text-sm text-gray-500 line-clamp-2">{menu.desc}</p>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <div className="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-6 flex gap-4">
+                        <i className="ph ph-info text-2xl text-blue-600 flex-shrink-0"></i>
+                        <div>
+                            <h4 className="font-semibold text-blue-900 mb-1">Informasi Sistem</h4>
+                            <p className="text-sm text-blue-800">
+                                Sistem ini digunakan untuk mendata kehadiran siswa pada jam pelajaran PAI dan pelaksanaan sholat Dhuha, Dzuhur, dan Ashar. Data yang diinputkan akan langsung tersinkronisasi ke pusat data sekolah.
+                                <br/><br/><strong>Catatan:</strong> Presensi dinonaktifkan secara otomatis pada hari Sabtu dan Ahad.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const KelolaAbsen = ({ showToast, user, siswaList }) => {
+            const [selectedKelas, setSelectedKelas] = React.useState('');
+            const [selectedKategori, setSelectedKategori] = React.useState('');
+            const [tanggal, setTanggal] = React.useState(new Date().toISOString().split('T')[0]);
+            const [absensi, setAbsensi] = React.useState({});
+            const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+            const d = new Date(tanggal);
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+            const siswaInClass = React.useMemo(() => {
+                return siswaList.filter(s => s.kelas.trim().toUpperCase() === selectedKelas.trim().toUpperCase());
+            }, [selectedKelas, siswaList]);
+
+            React.useEffect(() => {
+                const initialAbsen = {};
+                siswaInClass.forEach(s => {
+                    initialAbsen[s.nis] = 'Hadir';
+                });
+                setAbsensi(initialAbsen);
+            }, [siswaInClass, selectedKelas, selectedKategori]);
+
+            const handleStatusChange = (nis, status) => {
+                setAbsensi(prev => ({ ...prev, [nis]: status }));
+            };
+
+            const handleSubmit = async () => {
+                if(isWeekend) {
+                    showToast("Tidak dapat menyimpan data pada hari libur (Sabtu/Ahad).", "error");
+                    return;
+                }
+                if (!selectedKelas || !selectedKategori) {
+                    showToast("Pilih Kelas dan Kategori Presensi terlebih dahulu.", "error");
+                    return;
+                }
+                if (siswaInClass.length === 0) {
+                    showToast("Tidak ada siswa terdaftar di kelas ini.", "error");
+                    return;
+                }
+
+                setIsSubmitting(true);
+                
+                const payload = {
+                    action: 'presensi',
+                    tanggal: tanggal,
+                    guru: user.nama,
+                    kelas: selectedKelas,
+                    kategori: selectedKategori,
+                    data: siswaInClass.map(siswa => ({
+                        nis: siswa.nis,
+                        nama: siswa.nama,
+                        status: absensi[siswa.nis] || 'Hadir'
+                    }))
+                };
+
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    showToast("Data presensi berhasil dikirim ke server.", "success");
+                    setSelectedKelas('');
+                    setSelectedKategori('');
+                } catch (error) {
+                    showToast("Gagal mengirim data. Periksa koneksi internet.", "error");
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            return (
+                <div className="fade-in">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Kelola Absensi</h2>
+                    
+                    {isWeekend && (
+                         <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded-r-lg flex gap-3">
+                            <i className="ph ph-calendar-x text-xl text-orange-600"></i>
                             <div>
-                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">NIP / Nama Guru</label>
-                                <input type="text" id="inputUsername" required placeholder="Masukkan NIP atau Nama Guru" 
-                                    class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                                <h3 className="font-medium text-orange-800">Hari Libur</h3>
+                                <p className="text-sm text-orange-700">Tanggal yang dipilih adalah hari Sabtu/Ahad. Input presensi dinonaktifkan.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <Card className="p-6 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                                <input 
+                                    type="date" 
+                                    value={tanggal}
+                                    onChange={(e) => setTanggal(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Password (NIP / 0)</label>
-                                <input type="password" id="inputPassword" required placeholder="Masukkan Password" 
-                                    class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Kelas ({siswaList.length} Total Siswa)</label>
+                                <select 
+                                    value={selectedKelas}
+                                    onChange={(e) => setSelectedKelas(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                                >
+                                    <option value="">-- Pilih Kelas --</option>
+                                    {KELAS_LIST.map(k => (
+                                        <option key={k} value={k}>
+                                            {k} ({siswaList.filter(s => s.kelas.trim().toUpperCase() === k.toUpperCase()).length} Siswa)
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
-                            <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow transition">
-                                Masuk ke Sistem
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Presensi</label>
+                                <select 
+                                    value={selectedKategori}
+                                    onChange={(e) => setSelectedKategori(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                                >
+                                    <option value="">-- Pilih Kategori --</option>
+                                    {KATEGORI_PRESENSI.map(k => <option key={k} value={k}>{k}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {selectedKelas && selectedKategori && !isWeekend && (
+                        <Card className="overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
+                                        <tr>
+                                            <th className="px-6 py-4 font-semibold">NIS</th>
+                                            <th className="px-6 py-4 font-semibold">Nama Siswa</th>
+                                            <th className="px-6 py-4 font-semibold text-center">Status Kehadiran</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {siswaInClass.map(siswa => (
+                                            <tr key={siswa.nis} className="hover:bg-gray-50/50">
+                                                <td className="px-6 py-4 text-gray-600">{siswa.nis}</td>
+                                                <td className="px-6 py-4 font-medium text-gray-900">{siswa.nama}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex justify-center gap-2">
+                                                        {STATUS_PRESENSI.map(status => {
+                                                            let colorClass = "bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent";
+                                                            if (absensi[siswa.nis] === status) {
+                                                                if(status === 'Hadir') colorClass = "bg-green-100 text-green-700 border-green-500";
+                                                                else if(status === 'Sakit' || status === 'Ijin') colorClass = "bg-blue-100 text-blue-700 border-blue-500";
+                                                                else if(status === 'Alpha') colorClass = "bg-red-100 text-red-700 border-red-500";
+                                                                else colorClass = "bg-orange-100 text-orange-700 border-orange-500";
+                                                            }
+
+                                                            return (
+                                                                <button
+                                                                    key={status}
+                                                                    onClick={() => handleStatusChange(siswa.nis, status)}
+                                                                    className={`px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${colorClass}`}
+                                                                >
+                                                                    {status}
+                                                                </button>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {siswaInClass.length === 0 && (
+                                            <tr>
+                                                <td colSpan="3" className="px-6 py-8 text-center text-gray-500">
+                                                    Tidak ada siswa yang terdaftar di kelas <strong>{selectedKelas}</strong>. Silakan periksa kembali data di menu Data Siswa.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {siswaInClass.length > 0 && (
+                                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
+                                    <button 
+                                        onClick={handleSubmit}
+                                        disabled={isSubmitting}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-70"
+                                    >
+                                        {isSubmitting ? (
+                                            <><i className="ph ph-spinner animate-spin"></i> Menyimpan...</>
+                                        ) : (
+                                            <><i className="ph ph-paper-plane-tilt"></i> Simpan Presensi</>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+                        </Card>
+                    )}
+                </div>
+            );
+        };
+
+        const Kedisiplinan = ({ showToast, user, siswaList, addDisiplinRecord }) => {
+            const [selectedFilterKelas, setSelectedFilterKelas] = React.useState('');
+            const [selectedSiswa, setSelectedSiswa] = React.useState('');
+            const [kategori, setKategori] = React.useState('Ringan');
+            const [keterangan, setKeterangan] = React.useState('');
+            const [tindakan, setTindakan] = React.useState('');
+            const [pelapor, setPelapor] = React.useState(user.role === 'public' ? '' : user.nama);
+            const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+            const filteredSiswa = selectedFilterKelas ? siswaList.filter(s => s.kelas.trim().toUpperCase() === selectedFilterKelas.trim().toUpperCase()) : siswaList;
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!selectedSiswa) {
+                    showToast("Pilih siswa terlebih dahulu", "error");
+                    return;
+                }
+                if (user.role === 'public' && !pelapor.trim()) {
+                    showToast("Silakan masukkan email atau nama Anda sebagai pelapor", "error");
+                    return;
+                }
+
+                setIsSubmitting(true);
+                const siswaObj = siswaList.find(s => s.nis === selectedSiswa);
+                if (!siswaObj) {
+                    showToast("Data siswa tidak ditemukan", "error");
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                const poin = POIN_DISIPLIN[kategori];
+                const namaPelapor = user.role === 'public' ? pelapor : user.nama;
+
+                const payload = {
+                    action: 'disiplin',
+                    tanggal: new Date().toISOString().split('T')[0],
+                    guru: namaPelapor,
+                    nis: siswaObj.nis,
+                    nama: siswaObj.nama,
+                    kelas: siswaObj.kelas,
+                    kategori: kategori,
+                    poin: poin,
+                    keterangan: keterangan,
+                    tindakan: tindakan
+                };
+
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if(addDisiplinRecord) addDisiplinRecord(payload);
+                    showToast("Data pelanggaran berhasil dicatat.", "success");
+                    setSelectedSiswa('');
+                    setKeterangan('');
+                    setTindakan('');
+                    setKategori('Ringan');
+                    if (user.role === 'public') setPelapor('');
+                } catch (error) {
+                    showToast("Gagal menyimpan data.", "error");
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            return (
+                <div className="fade-in max-w-2xl mx-auto">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Input Kedisiplinan Siswa</h2>
+                    
+                    <Card className="p-8">
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {user.role === 'public' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email / Nama Pelapor (Publik)</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={pelapor}
+                                        onChange={(e) => setPelapor(e.target.value)}
+                                        placeholder="Masukkan email / nama pelapor"
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter Kelas</label>
+                                    <select 
+                                        value={selectedFilterKelas}
+                                        onChange={(e) => {
+                                            setSelectedFilterKelas(e.target.value);
+                                            setSelectedSiswa('');
+                                        }}
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                    >
+                                        <option value="">-- Semua Kelas ({siswaList.length} Siswa) --</option>
+                                        {KELAS_LIST.map(k => <option key={k} value={k}>{k}</option>)}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Siswa</label>
+                                    <select 
+                                        required
+                                        value={selectedSiswa}
+                                        onChange={(e) => setSelectedSiswa(e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                                    >
+                                        <option value="">-- Pilih Siswa --</option>
+                                        {filteredSiswa.map(s => (
+                                            <option key={s.nis} value={s.nis}>{s.nama} - {s.kelas} (NIS: {s.nis})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-3">Kategori & Poin Pelanggaran</label>
+                                <div className="flex gap-4">
+                                    {KATEGORI_DISIPLIN.map(kat => (
+                                        <label key={kat} className={`flex-1 cursor-pointer rounded-lg border p-4 flex flex-col items-center gap-2 transition-all ${kategori === kat ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                            <input 
+                                                type="radio" 
+                                                name="kategori" 
+                                                value={kat}
+                                                checked={kategori === kat}
+                                                onChange={(e) => setKategori(e.target.value)}
+                                                className="sr-only"
+                                            />
+                                            <div className={`w-4 h-4 rounded-full border-2 ${kategori === kat ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}></div>
+                                            <span className={`font-medium ${kategori === kat ? 'text-orange-700' : 'text-gray-600'}`}>{kat}</span>
+                                            <span className={`text-xs px-2 py-1 rounded-full ${kategori === kat ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-500'}`}>{POIN_DISIPLIN[kat]} Poin</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan / Deskripsi Pelanggaran</label>
+                                <textarea 
+                                    required
+                                    rows="2"
+                                    value={keterangan}
+                                    onChange={(e) => setKeterangan(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none resize-none"
+                                    placeholder="Jelaskan detail pelanggaran..."
+                                ></textarea>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tindakan / Sanksi yang Diberikan</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={tindakan}
+                                    onChange={(e) => setTindakan(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 outline-none"
+                                    placeholder="Contoh: Pembinaan lisan / Panggilan orang tua / Surat Peringatan"
+                                />
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                disabled={isSubmitting}
+                                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 rounded-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-70"
+                            >
+                                {isSubmitting ? (
+                                     <><i className="ph ph-spinner animate-spin"></i> Menyimpan...</>
+                                ) : (
+                                     <><i className="ph ph-check-circle"></i> Catat Pelanggaran</>
+                                )}
                             </button>
                         </form>
-
-                        <div class="mt-6 pt-4 border-t border-slate-700">
-                            <span class="block text-xs text-slate-400 mb-2">Pintasan Masuk Cepat:</span>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="quickLogin('197410101998022001')" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-slate-600">Bu Ulfatul Husna</button>
-                                <button onclick="quickLogin('198911052025211030')" class="px-2.5 py-1 bg-slate-700 text-xs text-slate-300 rounded hover:bg-slate-600">Pak Solichul</button>
-                                <button onclick="quickLogin('0')" class="px-2.5 py-1 bg-slate-700 text-xs text-amber-300 rounded hover:bg-slate-600">Pak Anas (GTT)</button>
-                            </div>
-                        </div>
-                    </div>
+                    </Card>
                 </div>
-                <div class="mt-8 text-xs text-slate-500">&copy; 2026 SMAN 1 Krembung. Integrasi Google Sheets API Active.</div>
-            </div>
+            );
+        };
 
-            <div class="w-full lg:w-1/2 bg-gradient-to-br from-emerald-950 to-slate-900 flex flex-col justify-center items-center p-8 text-center">
-                <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhjhEe7DsQaweQWtckuBY0QdRPB_J0RbHqfSXb0fFnNGOQYwfzbn9SyTV1WORteNpd7S3rcGj3FYpaCf0X7tjQpcXoDfErD-aWPD9kTf-6auJIoAZ3ETmXpvuoVydS7H87HO-vidqv4ECyayUG4dFJNZNMuVWD2lUyaMaF7ox5BYCfAksicgx7ryvy6V56Z/s1600/LOGO%20SMANIKRE%20(1).png" 
-                     alt="Logo SMANIKRE" class="w-40 h-40 object-contain mb-6 drop-shadow-lg">
-                <h2 class="text-2xl font-bold text-white uppercase tracking-wide">SMA Negeri 1 Krembung</h2>
-                <p class="text-emerald-400 text-xs font-semibold uppercase mt-2 max-w-md">Beriman, Bertaqwa, Berakhlaq Mulia, Berprestasi, Mandiri, Berbudaya Lingkungan</p>
-            </div>
-        </div>
+        const DataSiswaView = ({ siswaList, setSiswaList, showToast }) => {
+            const [showInputModal, setShowInputModal] = React.useState(false);
+            const [showQRModal, setShowQRModal] = React.useState(false);
+            const [qrFilterKelas, setQrFilterKelas] = React.useState('');
+            const [searchQuery, setSearchQuery] = React.useState('');
+            const [massData, setMassData] = React.useState('');
+            const fileInputRef = React.useRef(null);
 
-        <!-- VIEW 2: MAIN DASHBOARD AREA -->
-        <div id="dashboardView" class="hidden min-h-screen flex flex-col bg-slate-100">
-            <!-- HEADER -->
-            <header class="bg-emerald-900 text-white shadow-md sticky top-0 z-30 no-print">
-                <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhjhEe7DsQaweQWtckuBY0QdRPB_J0RbHqfSXb0fFnNGOQYwfzbn9SyTV1WORteNpd7S3rcGj3FYpaCf0X7tjQpcXoDfErD-aWPD9kTf-6auJIoAZ3ETmXpvuoVydS7H87HO-vidqv4ECyayUG4dFJNZNMuVWD2lUyaMaF7ox5BYCfAksicgx7ryvy6V56Z/s1600/LOGO%20SMANIKRE%20(1).png" class="w-9 h-9 object-contain bg-white/10 p-1 rounded-lg">
+            const filteredSiswaTable = siswaList.filter(s => 
+                s.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                s.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                s.kelas.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const text = event.target.result;
+                    const baris = text.split('\n');
+                    const newStudents = [];
+                    
+                    baris.forEach((b, index) => {
+                        if(b.trim() === '') return;
+                        const parts = b.split(/[,;|\t]/).map(p => p.trim());
+                        if(parts.length >= 3) {
+                            if (index === 0 && (parts[0].toLowerCase() === 'nis' || isNaN(parts[0]))) return;
+                            newStudents.push({
+                                nis: parts[0],
+                                nama: parts[1],
+                                kelas: parts[2]
+                            });
+                        }
+                    });
+
+                    if(newStudents.length > 0) {
+                        const combined = [...siswaList];
+                        newStudents.forEach(ns => {
+                            const existingIdx = combined.findIndex(s => s.nis === ns.nis);
+                            if(existingIdx >= 0) combined[existingIdx] = ns;
+                            else combined.push(ns);
+                        });
+                        
+                        setSiswaList(combined);
+                        showToast(`${newStudents.length} Data siswa berhasil diunggah dan disinkronkan.`, "success");
+                    } else {
+                        showToast("Format file CSV tidak valid. Pastikan kolom: NIS, Nama, Kelas", "error");
+                    }
+                    e.target.value = null;
+                };
+                reader.readAsText(file);
+            };
+
+            const handleMassInput = () => {
+                if(!massData.trim()) return;
+                
+                const baris = massData.split('\n');
+                const newStudents = [];
+                
+                baris.forEach(b => {
+                    if(b.trim() === '') return;
+                    const parts = b.split(/[,|\t]/).map(p => p.trim());
+                    if(parts.length >= 3) {
+                        newStudents.push({
+                            nis: parts[0],
+                            nama: parts[1],
+                            kelas: parts[2]
+                        });
+                    }
+                });
+
+                if(newStudents.length > 0) {
+                    const combined = [...siswaList];
+                    newStudents.forEach(ns => {
+                        const existingIdx = combined.findIndex(s => s.nis === ns.nis);
+                        if(existingIdx >= 0) combined[existingIdx] = ns;
+                        else combined.push(ns);
+                    });
+                    
+                    setSiswaList(combined);
+                    showToast(`${newStudents.length} Data siswa massal berhasil disimpan & disinkronkan.`, "success");
+                    setShowInputModal(false);
+                    setMassData('');
+                } else {
+                    showToast("Format data tidak valid. Pastikan format: NIS, Nama, Kelas", "error");
+                }
+            };
+
+            const handleDeleteSiswa = (nis) => {
+                if (confirm(`Yakin ingin menghapus siswa dengan NIS ${nis}?`)) {
+                    const updated = siswaList.filter(s => s.nis !== nis);
+                    setSiswaList(updated);
+                    showToast("Data siswa berhasil dihapus.", "success");
+                }
+            };
+
+            const handleClearAllSiswa = () => {
+                if (confirm("PERINGATAN: Tindakan ini akan menghapus seluruh data siswa di sistem. Lanjutkan?")) {
+                    setSiswaList([]);
+                    showToast("Semua data siswa dikosongkan.", "success");
+                }
+            };
+
+            return (
+                <div className="fade-in">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
-                            <h1 class="font-bold text-base leading-none">SIAP SMANIKRE</h1>
-                            <p class="text-[10px] text-emerald-300">SMAN 1 Krembung</p>
+                            <h2 className="text-2xl font-bold text-gray-800">Data Siswa SMAN 1 Krembung</h2>
+                            <p className="text-sm text-gray-500">Total terdaftar: <strong>{siswaList.length} Siswa</strong></p>
                         </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <div class="text-right text-xs hidden sm:block">
-                            <span id="navUserName" class="font-semibold block">Guru PAI</span>
-                            <span id="navUserRole" class="text-emerald-300 text-[10px]">NIP. -</span>
-                        </div>
-                        <button onclick="handleLogout()" class="bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
-                            <i class="fa-solid fa-right-from-bracket mr-1"></i> Keluar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- NAVIGATION BAR -->
-                <nav class="bg-emerald-950 border-t border-emerald-800 px-4 overflow-x-auto custom-scrollbar">
-                    <div class="max-w-7xl mx-auto flex space-x-2 py-2 text-xs">
-                        <button onclick="switchTab('dashboard')" id="nav-tab-dashboard" class="px-3 py-2 rounded-lg font-medium bg-emerald-600 text-white"><i class="fa-solid fa-chart-line mr-1"></i> Dashboard</button>
-                        <button onclick="switchTab('siswa')" id="nav-tab-siswa" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-users mr-1"></i> Data Siswa</button>
-                        <button onclick="switchTab('presensi')" id="nav-tab-presensi" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-qrcode mr-1"></i> Presensi & QR Scanner</button>
-                        <button onclick="switchTab('kedisiplinan')" id="nav-tab-kedisiplinan" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-scale-balanced mr-1"></i> Catatan Kedisiplinan</button>
-                        <button onclick="switchTab('qrcard')" id="nav-tab-qrcard" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-id-card mr-1"></i> Cetak Kartu QR</button>
-                        <button onclick="switchTab('guru')" id="nav-tab-guru" class="px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900"><i class="fa-solid fa-user-group mr-1"></i> Data Guru</button>
-                    </div>
-                </nav>
-            </header>
-
-            <!-- MAIN CONTENT DISPLAY -->
-            <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
-                <!-- TAB 1: DASHBOARD -->
-                <div id="content-dashboard" class="tab-content space-y-6">
-                    <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white rounded-2xl p-6 shadow-md flex justify-between items-center">
-                        <div>
-                            <h2 class="text-2xl font-bold" id="dashWelcomeTitle">Assalamu'alaikum, Guru PAI</h2>
-                            <p class="text-emerald-100 text-xs mt-1">Sistem Terintegrasi Google Spreadsheet untuk Presensi & Pelanggaran Siswa.</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs text-emerald-200 block uppercase">Tanggal Hari Ini</span>
-                            <span id="dashCurrentDate" class="text-sm font-bold"></span>
+                        <div className="flex gap-2 w-full md:w-auto flex-wrap">
+                            <input 
+                                type="file" 
+                                accept=".csv" 
+                                ref={fileInputRef} 
+                                onChange={handleFileUpload} 
+                                className="hidden" 
+                            />
+                            <button onClick={() => fileInputRef.current.click()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                <i className="ph ph-upload-simple text-lg"></i> Upload CSV
+                            </button>
+                            <button onClick={() => setShowInputModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                <i className="ph ph-clipboard-text text-lg"></i> Input Massal
+                            </button>
+                            <button onClick={() => setShowQRModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                <i className="ph ph-qr-code text-lg"></i> Cetak QR Massal
+                            </button>
+                            <button onClick={handleClearAllSiswa} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-red-200">
+                                <i className="ph ph-trash text-base"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Total Siswa</p>
-                                <h3 id="statTotalSiswa" class="text-2xl font-black text-slate-800 mt-1">0</h3>
-                            </div>
-                            <i class="fa-solid fa-user-graduate text-emerald-600 text-2xl"></i>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Catatan Presensi</p>
-                                <h3 id="statTotalPresensi" class="text-2xl font-black text-slate-800 mt-1">0</h3>
-                            </div>
-                            <i class="fa-solid fa-clipboard-check text-blue-600 text-2xl"></i>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase">Total Pelanggaran</p>
-                                <h3 id="statTotalPelanggaran" class="text-2xl font-black text-slate-800 mt-1">0</h3>
-                            </div>
-                            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-2xl"></i>
-                        </div>
+                    <div className="mb-4">
+                        <input 
+                            type="text" 
+                            placeholder="Cari berdasarkan Nama, NIS, atau Kelas..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full md:w-96 px-4 py-2.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        />
                     </div>
-                </div>
 
-                <!-- TAB 2: DATA SISWA -->
-                <div id="content-siswa" class="tab-content hidden space-y-4">
-                    <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                        <h2 class="font-bold text-slate-800 text-lg">Data Siswa</h2>
-                        <button onclick="bukaModalTambahSiswa()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold">
-                            <i class="fa-solid fa-plus mr-1"></i> Tambah Siswa
-                        </button>
-                    </div>
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                        <table class="w-full text-left text-xs text-slate-600">
-                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 uppercase">
-                                <tr>
-                                    <th class="p-3">NIS</th>
-                                    <th class="p-3">Nama Siswa</th>
-                                    <th class="p-3">Kelas</th>
-                                    <th class="p-3">JK</th>
-                                    <th class="p-3 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableSiswaBody" class="divide-y divide-slate-100"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- TAB 3: PRESENSI & SCANNER -->
-                <div id="content-presensi" class="tab-content hidden space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- FORM CATAT PRESENSI -->
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                            <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-                                <i class="fa-solid fa-qrcode text-emerald-600"></i> Form Input Presensi
-                            </h3>
-                            <form onsubmit="handleSimpanPresensiManual(event)" class="space-y-3">
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Pilih Siswa</label>
-                                    <select id="presensiSelectSiswa" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:ring-2 focus:ring-emerald-500">
-                                        <option value="">-- Pilih Siswa --</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Kategori Kegiatan</label>
-                                    <select id="presensiKategori" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
-                                        <option value="Kehadiran Kelas PAI">Kehadiran Kelas PAI</option>
-                                        <option value="Sholat Dhuha Berjamaah">Sholat Dhuha Berjamaah</option>
-                                        <option value="Sholat Dhuhur/Ashar Berjamaah">Sholat Dhuhur/Ashar Berjamaah</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Status Kehadiran</label>
-                                    <select id="presensiStatus" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
-                                        <option value="Hadir">Hadir</option>
-                                        <option value="Izin">Izin</option>
-                                        <option value="Sakit">Sakit</option>
-                                        <option value="Alpha">Alpha</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow">
-                                    <i class="fa-solid fa-paper-plane mr-1"></i> Simpan & Kirim ke Spreadsheet
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- TABEL RIWAYAT PRESENSI -->
-                        <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                            <h3 class="font-bold text-slate-800 text-base">Riwayat Presensi Siswa</h3>
-                            <div class="overflow-x-auto max-h-96 custom-scrollbar">
-                                <table class="w-full text-left text-xs text-slate-600">
-                                    <thead class="bg-slate-50 border-b border-slate-200 uppercase sticky top-0">
-                                        <tr>
-                                            <th class="p-2.5">Waktu</th>
-                                            <th class="p-2.5">Siswa</th>
-                                            <th class="p-2.5">Kategori</th>
-                                            <th class="p-2.5">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tablePresensiBody" class="divide-y divide-slate-100"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAB 4: CATATAN KEDISIPLINAN -->
-                <div id="content-kedisiplinan" class="tab-content hidden space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- FORM CATAT PELANGGARAN -->
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                            <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-                                <i class="fa-solid fa-scale-balanced text-amber-600"></i> Catat Pelanggaran
-                            </h3>
-                            <form onsubmit="handleSimpanPelanggaran(event)" class="space-y-3">
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Pilih Siswa</label>
-                                    <select id="discSelectSiswa" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:ring-2 focus:ring-emerald-500">
-                                        <option value="">-- Pilih Siswa --</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Tingkat Pelanggaran</label>
-                                    <select id="discKategori" required class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
-                                        <option value="Ringan">Ringan</option>
-                                        <option value="Sedang">Sedang</option>
-                                        <option value="Berat">Berat</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Jenis Pelanggaran</label>
-                                    <input type="text" id="discJenis" required placeholder="Contoh: Terlambat, Tidak Sholat" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Poin Pelanggaran</label>
-                                    <input type="number" id="discPoin" required value="10" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Tindakan / Pembinaan</label>
-                                    <input type="text" id="discTindakan" required placeholder="Teguran Lisan / Pembinaan" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs">
-                                </div>
-                                <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs shadow">
-                                    <i class="fa-solid fa-paper-plane mr-1"></i> Simpan & Kirim ke Spreadsheet
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- TABEL PELANGGARAN -->
-                        <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                            <h3 class="font-bold text-slate-800 text-base">Daftar Pelanggaran Siswa</h3>
-                            <div class="overflow-x-auto max-h-96 custom-scrollbar">
-                                <table class="w-full text-left text-xs text-slate-600">
-                                    <thead class="bg-slate-50 border-b border-slate-200 uppercase sticky top-0">
-                                        <tr>
-                                            <th class="p-2.5">Tanggal</th>
-                                            <th class="p-2.5">Siswa</th>
-                                            <th class="p-2.5">Pelanggaran</th>
-                                            <th class="p-2.5">Poin</th>
-                                            <th class="p-2.5">Pelapor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tableDisciplineBody" class="divide-y divide-slate-100"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAB 5: CETAK KARTU QR -->
-                <div id="content-qrcard" class="tab-content hidden space-y-4">
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center no-print">
-                        <h2 class="font-bold text-slate-800 text-lg">Kartu Presensi QR Siswa</h2>
-                        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold">
-                            <i class="fa-solid fa-print mr-1"></i> Cetak Kartu
-                        </button>
-                    </div>
-                    <div id="qrCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
-                </div>
-
-                <!-- TAB 6: DATA GURU -->
-                <div id="content-guru" class="tab-content hidden space-y-4">
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <h2 class="font-bold text-slate-800 text-lg mb-4">Daftar Guru PAI SMAN 1 Krembung</h2>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs text-slate-600">
-                                <thead class="bg-slate-50 border-b border-slate-200 uppercase">
+                    <Card className="overflow-hidden">
+                        <div className="overflow-x-auto max-h-[500px]">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                <thead className="bg-gray-50 border-b border-gray-200 text-gray-700 sticky top-0 z-10">
                                     <tr>
-                                        <th class="p-3">Nama Guru</th>
-                                        <th class="p-3">NIP</th>
-                                        <th class="p-3">Golongan</th>
-                                        <th class="p-3">Jabatan</th>
+                                        <th className="px-6 py-4 font-semibold">NIS</th>
+                                        <th className="px-6 py-4 font-semibold">Nama Siswa</th>
+                                        <th className="px-6 py-4 font-semibold">Kelas</th>
+                                        <th className="px-6 py-4 font-semibold text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tableGuruBody" class="divide-y divide-slate-100"></tbody>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredSiswaTable.map((row, rIdx) => (
+                                        <tr key={rIdx} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-gray-600">{row.nis}</td>
+                                            <td className="px-6 py-4 font-medium text-gray-900">{row.nama}</td>
+                                            <td className="px-6 py-4 text-gray-600 font-semibold">{row.kelas}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button 
+                                                    onClick={() => handleDeleteSiswa(row.nis)}
+                                                    className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition"
+                                                    title="Hapus Siswa"
+                                                >
+                                                    <i className="ph ph-trash text-base"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredSiswaTable.length === 0 && (
+                                        <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">Tidak ada data siswa yang cocok dengan pencarian.</td></tr>
+                                    )}
+                                </tbody>
                             </table>
                         </div>
+                    </Card>
+
+                    {/* Modal Input Massal */}
+                    {showInputModal && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 fade-in">
+                            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
+                                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                    <h3 className="font-bold text-gray-800">Input Data Siswa Massal</h3>
+                                    <button onClick={() => setShowInputModal(false)} className="text-gray-500 hover:text-red-500"><i className="ph ph-x text-xl"></i></button>
+                                </div>
+                                <div className="p-6">
+                                    <p className="text-sm text-gray-600 mb-2">Tempel (Paste) data dari Excel dengan urutan kolom: <strong>NIS, Nama Lengkap, Kelas</strong>.</p>
+                                    <textarea 
+                                        rows="10" 
+                                        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre font-mono"
+                                        placeholder="1001	Abdullah Fachry	X-1&#10;1002	Aisyah Putri	X-1"
+                                        value={massData}
+                                        onChange={(e) => setMassData(e.target.value)}
+                                    ></textarea>
+                                </div>
+                                <div className="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50">
+                                    <button onClick={() => setShowInputModal(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-200 font-medium text-sm">Batal</button>
+                                    <button onClick={handleMassInput} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2">
+                                        <i className="ph ph-floppy-disk"></i> Simpan & Sinkronkan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Cetak QR Massal dengan Filter Kelas */}
+                    {showQRModal && (
+                        <div className="fixed inset-0 bg-black/50 flex flex-col items-center p-4 z-50 fade-in overflow-y-auto">
+                            <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl my-8 flex flex-col">
+                                <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center sticky top-0 bg-white z-10 no-print gap-4">
+                                    <h3 className="font-bold text-gray-800">Cetak QR Code Siswa</h3>
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                        <select 
+                                            value={qrFilterKelas}
+                                            onChange={(e) => setQrFilterKelas(e.target.value)}
+                                            className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none bg-white"
+                                        >
+                                            <option value="">Semua Kelas</option>
+                                            {KELAS_LIST.map(k => <option key={k} value={k}>{k}</option>)}
+                                        </select>
+                                        <button onClick={() => window.print()} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm flex items-center gap-2">
+                                            <i className="ph ph-printer"></i> Cetak (Print)
+                                        </button>
+                                        <button onClick={() => setShowQRModal(false)} className="px-4 py-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 font-medium text-sm">
+                                            Tutup
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div id="print-area" className="p-8 bg-white grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                                    {siswaList.filter(s => qrFilterKelas === '' || s.kelas.trim().toUpperCase() === qrFilterKelas.toUpperCase()).map(siswa => (
+                                        <div key={siswa.nis} className="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center">
+                                            <h4 className="font-bold text-xs text-gray-800 mb-1 leading-tight line-clamp-2 min-h-[2rem]">{siswa.nama}</h4>
+                                            <img 
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${siswa.nis}`} 
+                                                alt={`QR ${siswa.nis}`} 
+                                                className="w-24 h-24 mb-2"
+                                            />
+                                            <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded w-full">{siswa.nis}</span>
+                                            <span className="text-[10px] text-gray-500 mt-1">Kelas {siswa.kelas}</span>
+                                        </div>
+                                    ))}
+                                    {siswaList.filter(s => qrFilterKelas === '' || s.kelas.trim().toUpperCase() === qrFilterKelas.toUpperCase()).length === 0 && (
+                                        <div className="col-span-full text-center text-gray-500 py-8">
+                                            Tidak ada data siswa untuk kelas ini.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const LaporanView = ({ disiplinRecords, user }) => {
+            const [filterKelas, setFilterKelas] = React.useState('');
+
+            const rekapMap = {};
+            disiplinRecords.forEach(r => {
+                if (!filterKelas || r.kelas.trim().toUpperCase() === filterKelas.toUpperCase()) {
+                    if(!rekapMap[r.nis]) {
+                        rekapMap[r.nis] = { nis: r.nis, nama: r.nama, kelas: r.kelas, totalPoin: 0, pelanggaran: [] };
+                    }
+                    rekapMap[r.nis].totalPoin += r.poin;
+                    rekapMap[r.nis].pelanggaran.push(r);
+                }
+            });
+            const rekapArray = Object.values(rekapMap).sort((a, b) => b.totalPoin - a.totalPoin);
+
+            return (
+                <div className="fade-in">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h2 className="text-2xl font-bold text-gray-800">Laporan & Rekapitulasi</h2>
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <label className="text-sm font-medium text-gray-600 shrink-0">Filter Kelas:</label>
+                            <select 
+                                value={filterKelas}
+                                onChange={(e) => setFilterKelas(e.target.value)}
+                                className="w-full md:w-auto px-4 py-2 rounded-lg border border-gray-300 text-sm outline-none bg-white focus:ring-2 focus:ring-emerald-500"
+                            >
+                                <option value="">-- Semua Kelas --</option>
+                                {KELAS_LIST.map(k => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                        </div>
                     </div>
+                    
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center bg-white rounded-xl shadow-sm border border-gray-100 mb-8">
+                        <div className="bg-emerald-50 p-4 rounded-full mb-4 text-emerald-600">
+                            <i className="ph ph-file-text text-4xl"></i>
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-700 mb-2">
+                            Pusat Data Spreadsheet (Real-time)
+                        </h3>
+                        <p className="text-gray-500 max-w-md mb-4 text-sm leading-relaxed">
+                            Data mentah laporan presensi dan kedisiplinan tersinkronisasi langsung ke Google Spreadsheet SMAN 1 Krembung. 
+                        </p>
+                        <a href={SPREADSHEET_URL} target="_blank" className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm">
+                            Buka Spreadsheet Data <i className="ph ph-arrow-square-out"></i>
+                        </a>
+                    </div>
+
+                    {user.role === 'admin' && (
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i className="ph ph-chart-bar text-orange-500"></i>
+                                Rekap Poin Kedisiplinan Siswa (Akses Admin)
+                            </h3>
+                            <Card className="overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
+                                            <tr>
+                                                <th className="px-6 py-4 font-semibold">NIS</th>
+                                                <th className="px-6 py-4 font-semibold">Nama Siswa</th>
+                                                <th className="px-6 py-4 font-semibold">Kelas</th>
+                                                <th className="px-6 py-4 font-semibold">Total Poin</th>
+                                                <th className="px-6 py-4 font-semibold">Riwayat & Tindakan Pelanggaran</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {rekapArray.map((row, rIdx) => (
+                                                <tr key={rIdx} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 text-gray-600">{row.nis}</td>
+                                                    <td className="px-6 py-4 font-medium text-gray-900">{row.nama}</td>
+                                                    <td className="px-6 py-4 text-gray-600">{row.kelas}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${row.totalPoin >= 40 ? 'bg-red-100 text-red-700' : (row.totalPoin >= 20 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700')}`}>
+                                                            {row.totalPoin} Poin
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-600 text-xs">
+                                                        <ul className="space-y-1">
+                                                            {row.pelanggaran.map((p, idx) => (
+                                                                <li key={idx} className="bg-gray-50 p-1.5 rounded border border-gray-200">
+                                                                    <strong className="text-orange-700">[{p.kategori}]</strong> {p.keterangan} 
+                                                                    <br/><span className="italic text-gray-500">Tindakan: {p.tindakan || '-'}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {rekapArray.length === 0 && (
+                                                <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">Belum ada data rekapan kedisiplinan.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
+                        </div>
+                    )}
                 </div>
-            </main>
-        </div>
-    </div>
+            );
+        };
+        
+        const ScanQRCode = ({ showToast, user, siswaList }) => {
+            const [kategori, setKategori] = React.useState('Kelas');
+            const [isScanning, setIsScanning] = React.useState(false);
+            const [scanHistory, setScanHistory] = React.useState([]);
+            const lastScannedRef = React.useRef({ text: null, time: 0 });
 
-    <!-- MODAL TAMBAH SISWA -->
-    <div id="modalSiswa" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex justify-center items-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h3 class="font-bold text-slate-800 text-base">Tambah Data Siswa</h3>
-            <form onsubmit="handleSimpanSiswa(event)" class="space-y-3">
-                <input type="text" id="modalSiswaNis" placeholder="NIS Siswa" required class="w-full p-2.5 border rounded-xl text-xs">
-                <input type="text" id="modalSiswaNama" placeholder="Nama Lengkap Siswa" required class="w-full p-2.5 border rounded-xl text-xs">
-                <input type="text" id="modalSiswaKelas" placeholder="Kelas (contoh: XII-1)" required class="w-full p-2.5 border rounded-xl text-xs">
-                <select id="modalSiswaJk" class="w-full p-2.5 border rounded-xl text-xs">
-                    <option value="L">Laki-laki</option>
-                    <option value="P">Perempuan</option>
-                </select>
-                <div class="flex justify-end space-x-2 pt-2">
-                    <button type="button" onclick="tutupModalTambahSiswa()" class="px-4 py-2 bg-slate-200 text-xs rounded-xl font-semibold">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-xs rounded-xl font-semibold">Simpan</button>
+            React.useEffect(() => {
+                let html5QrCode;
+                if (isScanning) {
+                    html5QrCode = new Html5Qrcode("qr-reader");
+                    html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 5, qrbox: { width: 250, height: 250 } },
+                        async (decodedText) => {
+                            const now = Date.now();
+                            if (lastScannedRef.current.text === decodedText && (now - lastScannedRef.current.time < 3000)) {
+                                return; 
+                            }
+                            lastScannedRef.current = { text: decodedText, time: now };
+                            
+                            const today = new Date();
+                            if (today.getDay() === 0 || today.getDay() === 6) {
+                                showToast("Presensi dinonaktifkan pada hari libur.", "error");
+                                return;
+                            }
+
+                            const siswaObj = siswaList.find(s => s.nis.trim() === decodedText.trim());
+                            if (!siswaObj) {
+                                showToast(`NIS ${decodedText} tidak ditemukan dalam database siswa.`, "error");
+                                return;
+                            }
+
+                            const beep = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
+                            beep.play().catch(e => {});
+
+                            setScanHistory(prev => [{...siswaObj, waktu: new Date().toLocaleTimeString(), status: 'Mengirim...'}, ...prev].slice(0, 5));
+
+                            const payload = {
+                                action: 'presensi',
+                                tanggal: today.toISOString().split('T')[0],
+                                guru: user.nama,
+                                kelas: siswaObj.kelas,
+                                kategori: kategori,
+                                data: [{
+                                    nis: siswaObj.nis,
+                                    nama: siswaObj.nama,
+                                    status: 'Hadir'
+                                }]
+                            };
+
+                            try {
+                                await fetch(GAS_URL, {
+                                    method: 'POST',
+                                    mode: 'no-cors',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(payload)
+                                });
+                                
+                                showToast(`Berhasil absen: ${siswaObj.nama} (${siswaObj.kelas})`, "success");
+                                
+                                setScanHistory(prev => {
+                                    const newHistory = [...prev];
+                                    if(newHistory[0] && newHistory[0].nis === siswaObj.nis) {
+                                        newHistory[0].status = 'Terkirim';
+                                    }
+                                    return newHistory;
+                                });
+
+                            } catch (error) {
+                                showToast(`Gagal jaringan saat absen: ${siswaObj.nama}`, "error");
+                            }
+                        },
+                        (errorMessage) => {}
+                    ).catch(err => {
+                        showToast("Kamera tidak diizinkan atau tidak ditemukan.", "error");
+                        setIsScanning(false);
+                    });
+                }
+
+                return () => {
+                    if (html5QrCode && html5QrCode.isScanning) {
+                        html5QrCode.stop().then(() => {
+                            html5QrCode.clear();
+                        }).catch(console.error);
+                    }
+                };
+            }, [isScanning, kategori, siswaList, user.nama]);
+
+            return (
+                <div className="fade-in max-w-2xl mx-auto">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Scan QR Code Kehadiran</h2>
+                    
+                    <Card className="p-6 mb-6">
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Tujuan Scan (Kategori Presensi):</label>
+                            <select 
+                                value={kategori}
+                                onChange={(e) => setKategori(e.target.value)}
+                                disabled={isScanning}
+                                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none bg-white disabled:opacity-50"
+                            >
+                                {KATEGORI_PRESENSI.map(k => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 mb-4 min-h-[300px]">
+                            <div id="qr-reader" className={`w-full max-w-sm overflow-hidden rounded-lg shadow-inner ${isScanning ? 'bg-black' : ''}`}></div>
+                            
+                            {!isScanning && (
+                                <div className="text-center p-8">
+                                    <i className="ph ph-camera text-5xl text-gray-400 mb-3"></i>
+                                    <p className="text-gray-500 font-medium">Kamera Nonaktif</p>
+                                    <p className="text-sm text-gray-400 mt-1">Pastikan memberi izin akses kamera pada perangkat.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <button 
+                            onClick={() => setIsScanning(!isScanning)}
+                            className={`w-full font-bold py-3.5 rounded-lg transition-colors flex justify-center items-center gap-2 text-white shadow-sm ${isScanning ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                        >
+                            <i className={`ph text-xl ${isScanning ? 'ph-stop-circle' : 'ph-scan'}`}></i>
+                            {isScanning ? 'Hentikan Kamera' : 'Mulai Scan QR Code'}
+                        </button>
+                    </Card>
+
+                    {scanHistory.length > 0 && (
+                        <Card className="overflow-hidden">
+                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                <h3 className="font-semibold text-gray-700">Scan Terakhir</h3>
+                                <span className="text-xs text-gray-500">Tersinkronisasi</span>
+                            </div>
+                            <ul className="divide-y divide-gray-100">
+                                {scanHistory.map((sh, idx) => (
+                                    <li key={idx} className="p-4 flex items-center justify-between bg-white hover:bg-gray-50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                                                <i className="ph ph-check"></i>
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-800 text-sm">{sh.nama}</p>
+                                                <p className="text-xs text-gray-500">{sh.kelas} • NIS: {sh.nis}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-xs font-bold mb-0.5 ${sh.status === 'Mengirim...' ? 'text-orange-500' : 'text-emerald-600'}`}>{sh.status}</p>
+                                            <p className="text-[10px] text-gray-400">{sh.waktu}</p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Card>
+                    )}
                 </div>
-            </form>
-        </div>
-    </div>
+            );
+        };
 
-    <script>
-        // ==========================================
-        // 3. EVENT HANDLERS & LOGIK APLIKASI
-        // ==========================================
+        const App = () => {
+            const [user, setUser] = React.useState(null);
+            const [view, setView] = React.useState('dashboard');
+            const [publicView, setPublicView] = React.useState(null);
+            const [toast, setToast] = React.useState(null);
+            
+            // State Siswa yang tersinkronisasi secara permanen ke LocalStorage ( Mendukung ribuan data siswa )
+            const [siswaList, setSiswaList] = React.useState(() => {
+                const savedSiswa = localStorage.getItem('siap_siswa_list_v2');
+                if (savedSiswa) {
+                    try {
+                        const parsed = JSON.parse(savedSiswa);
+                        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                    } catch (e) {}
+                }
+                return INITIAL_SISWA_LIST;
+            });
 
-        function handleLogin(e) {
-            e.preventDefault();
-            const username = document.getElementById('inputUsername').value.trim();
-            const pass = document.getElementById('inputPassword').value.trim();
+            const [disiplinRecords, setDisiplinRecords] = React.useState(() => {
+                const saved = localStorage.getItem('siap_disiplin_records');
+                return saved ? JSON.parse(saved) : [];
+            });
 
-            const guru = DATA_GURU.find(g => (g.nip === username || g.nama.toLowerCase().includes(username.toLowerCase())) && (g.nip === pass || pass === '0'));
+            React.useEffect(() => {
+                localStorage.setItem('siap_siswa_list_v2', JSON.stringify(siswaList));
+            }, [siswaList]);
 
-            if (guru) {
-                currentUser = guru;
-                localStorage.setItem('siap_current_user', JSON.stringify(guru));
-                renderApp();
-            } else {
-                alert("Login Gagal! NIP atau Password salah.");
-            }
-        }
+            React.useEffect(() => {
+                localStorage.setItem('siap_disiplin_records', JSON.stringify(disiplinRecords));
+            }, [disiplinRecords]);
 
-        function quickLogin(nip) {
-            const guru = DATA_GURU.find(g => g.nip === nip);
-            if (guru) {
-                currentUser = guru;
-                localStorage.setItem('siap_current_user', JSON.stringify(guru));
-                renderApp();
-            }
-        }
-
-        function handleLogout() {
-            currentUser = null;
-            localStorage.removeItem('siap_current_user');
-            document.getElementById('loginView').classList.remove('hidden');
-            document.getElementById('dashboardView').classList.add('hidden');
-        }
-
-        function switchTab(tabName) {
-            activeTab = tabName;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.className = "nav-btn px-3 py-2 rounded-lg font-medium text-slate-300 hover:bg-emerald-900");
-
-            const currentTabEl = document.getElementById('content-' + tabName);
-            if (currentTabEl) currentTabEl.classList.remove('hidden');
-
-            const currentNavBtn = document.getElementById('nav-tab-' + tabName);
-            if (currentNavBtn) currentNavBtn.className = "nav-btn px-3 py-2 rounded-lg font-medium bg-emerald-600 text-white shadow";
-
-            if (tabName === 'qrcard') renderQRCards();
-        }
-
-        function renderApp() {
-            if (!currentUser) return;
-            document.getElementById('loginView').classList.add('hidden');
-            document.getElementById('dashboardView').classList.remove('hidden');
-
-            document.getElementById('navUserName').innerText = currentUser.nama;
-            document.getElementById('navUserRole').innerText = "NIP. " + currentUser.nip;
-            document.getElementById('dashWelcomeTitle').innerText = "Assalamu'alaikum, " + currentUser.nama;
-            document.getElementById('dashCurrentDate').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-            renderStats();
-            renderTableSiswa();
-            renderTablePresensi();
-            renderTableDiscipline();
-            renderTableGuru();
-            populateSelectSiswa();
-        }
-
-        function renderStats() {
-            document.getElementById('statTotalSiswa').innerText = studentsData.length;
-            document.getElementById('statTotalPresensi').innerText = attendanceRecords.length;
-            document.getElementById('statTotalPelanggaran').innerText = disciplineRecords.length;
-        }
-
-        function renderTableSiswa() {
-            const tbody = document.getElementById('tableSiswaBody');
-            tbody.innerHTML = studentsData.map(s => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-3 font-medium">${s.nis}</td>
-                    <td class="p-3 font-semibold text-slate-800">${s.nama}</td>
-                    <td class="p-3">${s.kelas}</td>
-                    <td class="p-3">${s.jk}</td>
-                    <td class="p-3 text-right">
-                        <button onclick="hapusSiswa('${s.nis}')" class="text-rose-600 hover:underline text-xs"><i class="fa-solid fa-trash"></i> Hapus</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function populateSelectSiswa() {
-            const options = studentsData.map(s => `<option value="${s.nis}">${s.nama} (${s.kelas})</option>`).join('');
-            document.getElementById('presensiSelectSiswa').innerHTML = '<option value="">-- Pilih Siswa --</option>' + options;
-            document.getElementById('discSelectSiswa').innerHTML = '<option value="">-- Pilih Siswa --</option>' + options;
-        }
-
-        // ==========================================
-        // 4. PEMPROSESAN PRESENSI & GOOGLE SHEETS
-        // ==========================================
-        function handleSimpanPresensiManual(e) {
-            e.preventDefault();
-            const nis = document.getElementById('presensiSelectSiswa').value;
-            const siswa = studentsData.find(s => s.nis === nis);
-            if (!siswa) return;
-
-            const dataPresensi = {
-                id: 'att_' + Date.now(),
-                nis: siswa.nis,
-                nama: siswa.nama,
-                kelas: siswa.kelas,
-                tanggal: new Date().toISOString().split('T')[0],
-                waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                kategori: document.getElementById('presensiKategori').value,
-                status: document.getElementById('presensiStatus').value,
-                pencatat: currentUser.nama
+            const addDisiplinRecord = (record) => {
+                setDisiplinRecords(prev => [record, ...prev]);
             };
 
-            // 1. Simpan ke LocalStorage
-            attendanceRecords.unshift(dataPresensi);
-            saveAttendance();
-            renderTablePresensi();
-            renderStats();
-
-            // 2. Kirim Otomatis ke Google Spreadsheet
-            kirimKeSpreadsheet({
-                action: "presensi",
-                tanggal: dataPresensi.tanggal,
-                waktu: dataPresensi.waktu,
-                nis: dataPresensi.nis,
-                nama: dataPresensi.nama,
-                kelas: dataPresensi.kelas,
-                kategori: dataPresensi.kategori,
-                status: dataPresensi.status,
-                pencatat: dataPresensi.pencatat
-            });
-
-            alert('Presensi berhasil disimpan dan dikirim ke Google Sheets!');
-        }
-
-        function renderTablePresensi() {
-            document.getElementById('tablePresensiBody').innerHTML = attendanceRecords.slice(0, 30).map(r => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-2.5 font-medium text-slate-500">${r.tanggal} ${r.waktu}</td>
-                    <td class="p-2.5 font-semibold text-slate-800">${r.nama} <span class="text-[10px] text-slate-400">(${r.kelas})</span></td>
-                    <td class="p-2.5">${r.kategori}</td>
-                    <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.status==='Hadir'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${r.status}</span></td>
-                </tr>
-            `).join('');
-        }
-
-        // ==========================================
-        // 5. PEMPROSESAN PELANGGARAN & GOOGLE SHEETS
-        // ==========================================
-        function handleSimpanPelanggaran(e) {
-            e.preventDefault();
-            const nis = document.getElementById('discSelectSiswa').value;
-            const siswa = studentsData.find(s => s.nis === nis);
-            if (!siswa) return;
-
-            const dataPelanggaran = {
-                id: 'disc_' + Date.now(),
-                nis: siswa.nis,
-                nama: siswa.nama,
-                kelas: siswa.kelas,
-                tanggal: new Date().toISOString().split('T')[0],
-                kategori: document.getElementById('discKategori').value,
-                jenis: document.getElementById('discJenis').value,
-                poin: parseInt(document.getElementById('discPoin').value),
-                tindakan: document.getElementById('discTindakan').value,
-                pelapor: currentUser.nama
+            const showToast = (message, type = 'info') => {
+                setToast({ message, type });
             };
 
-            // 1. Simpan ke LocalStorage
-            disciplineRecords.unshift(dataPelanggaran);
-            saveDiscipline();
-            renderTableDiscipline();
-            renderStats();
+            const handleLoginSuccess = (userData, targetView = 'dashboard') => {
+                setUser(userData);
+                setView(targetView);
+            };
 
-            // 2. Kirim Otomatis ke Google Spreadsheet
-            kirimKeSpreadsheet({
-                action: "pelanggaran",
-                tanggal: dataPelanggaran.tanggal,
-                nis: dataPelanggaran.nis,
-                nama: dataPelanggaran.nama,
-                kelas: dataPelanggaran.kelas,
-                kategori: dataPelanggaran.kategori,
-                jenis: dataPelanggaran.jenis,
-                poin: dataPelanggaran.poin,
-                tindakan: dataPelanggaran.tindakan,
-                pelapor: dataPelanggaran.pelapor
-            });
+            if (publicView) {
+                const publicUser = { nama: 'Asisten / Publik', role: 'public' };
+                
+                return (
+                    <div className="min-h-screen bg-gray-50 flex flex-col">
+                        <div className="bg-emerald-600 text-white p-4 flex items-center justify-between shadow-md">
+                            <div className="flex items-center gap-2 font-bold">
+                                <i className="ph ph-book-bookmark text-xl"></i> SIAP PAI - Akses Publik
+                            </div>
+                            <button onClick={() => setPublicView(null)} className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-lg hover:bg-white/30 transition text-sm font-medium">
+                                <i className="ph ph-arrow-left"></i> Kembali ke Muka
+                            </button>
+                        </div>
+                        
+                        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                            <div className="max-w-4xl mx-auto">
+                                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl mb-6 flex gap-3 shadow-sm">
+                                    <i className="ph ph-info text-2xl shrink-0 mt-0.5"></i>
+                                    <div>
+                                        <h4 className="font-bold">Mode Akses Publik Aktif</h4>
+                                        <p className="text-sm mt-1 text-blue-700">Anda dapat membantu menginput data tanpa login admin. Data akan langsung terkirim ke Spreadsheet pusat.</p>
+                                    </div>
+                                </div>
 
-            alert('Catatan Pelanggaran berhasil disimpan dan dikirim ke Google Sheets!');
-        }
+                                {publicView === 'scan' && <ScanQRCode showToast={showToast} user={publicUser} siswaList={siswaList} />}
+                                {publicView === 'disiplin' && <Kedisiplinan showToast={showToast} user={publicUser} siswaList={siswaList} addDisiplinRecord={addDisiplinRecord} />}
+                            </div>
+                        </main>
 
-        function renderTableDiscipline() {
-            document.getElementById('tableDisciplineBody').innerHTML = disciplineRecords.map(r => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-2.5 text-slate-500">${r.tanggal}</td>
-                    <td class="p-2.5 font-semibold text-slate-800">${r.nama} <span class="text-[10px] text-slate-400">(${r.kelas})</span></td>
-                    <td class="p-2.5">${r.jenis}</td>
-                    <td class="p-2.5 font-bold text-amber-600">+${r.poin}</td>
-                    <td class="p-2.5 text-slate-500">${r.pelapor}</td>
-                </tr>
-            `).join('');
-        }
-
-        function renderTableGuru() {
-            document.getElementById('tableGuruBody').innerHTML = DATA_GURU.map(g => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-3 font-semibold text-slate-800">${g.nama}</td>
-                    <td class="p-3 text-slate-500">${g.nip}</td>
-                    <td class="p-3">${g.gol}</td>
-                    <td class="p-3">${g.jabatan}</td>
-                </tr>
-            `).join('');
-        }
-
-        function renderQRCards() {
-            const container = document.getElementById('qrCardsContainer');
-            container.innerHTML = '';
-            studentsData.slice(0, 12).forEach((s, idx) => {
-                const cardId = `qrcode_card_${idx}`;
-                container.innerHTML += `
-                    <div class="bg-white border p-4 rounded-xl shadow-sm text-center space-y-2">
-                        <h4 class="font-bold text-xs text-slate-800">${s.nama}</h4>
-                        <p class="text-[10px] text-slate-500">${s.kelas} | NIS: ${s.nis}</p>
-                        <div id="${cardId}" class="flex justify-center my-2"></div>
+                        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
                     </div>
-                `;
-                setTimeout(() => {
-                    new QRCode(document.getElementById(cardId), { text: s.nis, width: 90, height: 90 });
-                }, 100);
-            });
-        }
-
-        function bukaModalTambahSiswa() { document.getElementById('modalSiswa').classList.remove('hidden'); }
-        function tutupModalTambahSiswa() { document.getElementById('modalSiswa').classList.add('hidden'); }
-
-        function handleSimpanSiswa(e) {
-            e.preventDefault();
-            const nis = document.getElementById('modalSiswaNis').value.trim();
-            const nama = document.getElementById('modalSiswaNama').value.trim();
-            const kelas = document.getElementById('modalSiswaKelas').value.trim();
-            const jk = document.getElementById('modalSiswaJk').value;
-
-            studentsData.push({ nis, nama, kelas, jk });
-            saveStudentsData();
-            renderTableSiswa();
-            populateSelectSiswa();
-            renderStats();
-            tutupModalTambahSiswa();
-        }
-
-        function hapusSiswa(nis) {
-            if (confirm("Apakah Anda yakin ingin menghapus siswa ini?")) {
-                studentsData = studentsData.filter(s => s.nis !== nis);
-                saveStudentsData();
-                renderTableSiswa();
-                populateSelectSiswa();
-                renderStats();
+                );
             }
-        }
 
-        // Inisialisasi saat Halaman Dimuat
-        window.addEventListener('DOMContentLoaded', () => {
-            if (currentUser) renderApp();
-        });
+            if (!user) {
+                return <Login onLogin={handleLoginSuccess} onPublicAccess={setPublicView} />;
+            }
+
+            const renderContent = () => {
+                switch (view) {
+                    case 'dashboard': return <Dashboard user={user} setView={setView} />;
+                    case 'absen': return <KelolaAbsen showToast={showToast} user={user} siswaList={siswaList} />;
+                    case 'disiplin': return <Kedisiplinan showToast={showToast} user={user} siswaList={siswaList} addDisiplinRecord={addDisiplinRecord} />;
+                    case 'data-siswa': return <DataSiswaView siswaList={siswaList} setSiswaList={setSiswaList} showToast={showToast} />;
+                    case 'data-guru': return <DataView title="Data Guru PAI SMAN 1 Krembung" data={GURU_PAI} columns={[{header:'Nama Guru', accessor:'nama'}, {header:'NIP', accessor:'nip'}, {header:'Pangkat/Gol', accessor:'pangkat'}]} />;
+                    case 'laporan': return <LaporanView disiplinRecords={disiplinRecords} user={user} />;
+                    case 'scan': return <ScanQRCode showToast={showToast} user={user} siswaList={siswaList} />;
+                    default: return <Dashboard user={user} setView={setView} />;
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex">
+                    <Sidebar currentView={view} setView={setView} user={user} onLogout={() => setUser(null)} />
+                    
+                    <div className="flex-1 md:ml-64 flex flex-col h-screen">
+                        <div className="md:hidden bg-emerald-600 text-white p-4 flex items-center justify-between shadow-md">
+                            <div className="flex items-center gap-2 font-bold">
+                                <i className="ph ph-book-bookmark text-xl"></i> SIAP PAI
+                            </div>
+                            <button onClick={() => setView('dashboard')} className="p-2">
+                                <i className="ph ph-squares-four text-2xl"></i>
+                            </button>
+                        </div>
+
+                        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                            {renderContent()}
+                        </main>
+                    </div>
+
+                    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
