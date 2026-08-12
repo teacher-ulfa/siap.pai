@@ -722,7 +722,6 @@
                 s.kelas.toLowerCase().includes(searchQuery.toLowerCase())
             );
 
-            // Fungsi pembantu untuk memproses baris mentah menjadi objek siswa ber-ID Unik aman
             const processNewStudents = (rawRows) => {
                 const newStudents = [];
                 rawRows.forEach((b, index) => {
@@ -735,8 +734,7 @@
                         const namaVal = parts[1];
                         const kelasVal = parts[2];
                         
-                        // ID Unik dijamin tidak bentrok meskipun NIS sama, 0, atau kosong
-                        const idUnik = nisVal ? `NIS-${nisVal}` : `KLS-${kelasVal}-${namaVal.replace(/\s+/g, '')}-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+                        const idUnik = nisVal ? `NIS-${nisVal}` : `KLS-${kelasVal}-${namaVal.replace(/\s+/g, '')}`;
 
                         newStudents.push({
                             idUnik: idUnik,
@@ -762,7 +760,6 @@
                     if(newStudents.length > 0) {
                         const combined = [...siswaList];
                         newStudents.forEach(ns => {
-                            // Cek duplikasi berdasarkan idUnik atau nama+kelas yang sama persis
                             const existingIdx = combined.findIndex(s => s.idUnik === ns.idUnik || (s.nama.toLowerCase() === ns.nama.toLowerCase() && s.kelas.toLowerCase() === ns.kelas.toLowerCase()));
                             if(existingIdx >= 0) {
                                 combined[existingIdx] = ns;
@@ -907,7 +904,7 @@
                                     <button onClick={() => setShowInputModal(false)} className="text-gray-500 hover:text-red-500"><i className="ph ph-x text-xl"></i></button>
                                 </div>
                                 <div className="p-6">
-                                    <p className="text-sm text-gray-600 mb-2">Tempel (Paste) data dari Excel dengan urutan kolom: <strong>NIS (boleh dikosongkan/0), Nama Lengkap, Kelas</strong>.</p>
+                                    <p className="text-sm text-gray-600 mb-2">Tempel (Paste) data dari Excel dengan urutan kolom: <strong>NIS (kosongkan/- jika belum ada), Nama Lengkap, Kelas</strong>.</p>
                                     <textarea 
                                         rows="10" 
                                         className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre font-mono"
@@ -955,7 +952,7 @@
                                         <div key={siswa.idUnik} className="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center">
                                             <h4 className="font-bold text-xs text-gray-800 mb-1 leading-tight line-clamp-2 min-h-[2rem]">{siswa.nama}</h4>
                                             <img 
-                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${siswa.idUnik}`} 
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(siswa.idUnik)}`} 
                                                 alt={`QR ${siswa.nama}`} 
                                                 className="w-24 h-24 mb-2"
                                             />
@@ -1091,7 +1088,12 @@
                         { facingMode: "environment" },
                         { fps: 5, qrbox: { width: 250, height: 250 } },
                         async (decodedText) => {
-                            const cleanText = decodedText.trim();
+                            // Decode URI component untuk menangani string URL-encoded dari QR
+                            let cleanText = decodedText.trim();
+                            try {
+                                cleanText = decodeURIComponent(cleanText);
+                            } catch (e) {}
+
                             const now = Date.now();
                             if (lastScannedRef.current.text === cleanText && (now - lastScannedRef.current.time < 3000)) {
                                 return; 
@@ -1104,10 +1106,20 @@
                                 return;
                             }
 
-                            // Pencocokan fleksibel berdasarkan idUnik QR Code ATAU NIS
-                            const siswaObj = siswaList.find(s => s.idUnik === cleanText || (s.nis && s.nis.trim() === cleanText));
+                            // PENCARIAN MULTI-METODE (Mencocokkan idUnik persis ATAU mencocokkan NIS ATAU mencocokkan kemiripan teks)
+                            let siswaObj = siswaList.find(s => 
+                                s.idUnik === cleanText || 
+                                (s.nis && s.nis.trim() === cleanText) ||
+                                cleanText.includes(s.nis)
+                            );
+
+                            // Jika masih belum ketemu, coba cari berdasarkan kecocokan string parsial pada idUnik
                             if (!siswaObj) {
-                                showToast(`QR Code / NIS "${cleanText}" tidak ditemukan dalam database.`, "error");
+                                siswaObj = siswaList.find(s => cleanText.includes(s.nama) || cleanText.includes(s.idUnik));
+                            }
+
+                            if (!siswaObj) {
+                                showToast(`QR Code "${cleanText}" tidak ditemukan dalam database.`, "error");
                                 return;
                             }
 
@@ -1242,7 +1254,6 @@
             const [publicView, setPublicView] = React.useState(null);
             const [toast, setToast] = React.useState(null);
             
-            // State Siswa dengan ID Unik otomatis untuk menangani NIS kosong/sama
             const [siswaList, setSiswaList] = React.useState(() => {
                 const savedSiswa = localStorage.getItem('siap_siswa_list_v3');
                 if (savedSiswa) {
@@ -1253,7 +1264,7 @@
                 }
                 return INITIAL_SISWA_LIST.map((s, idx) => ({
                     ...s,
-                    idUnik: s.nis ? `NIS-${s.nis}` : `INIT-${idx}-${s.kelas}`
+                    idUnik: s.nis ? `NIS-${s.nis}` : `KLS-${s.kelas}-${s.nama.replace(/\s+/g, '')}`
                 }));
             });
 
@@ -1363,3 +1374,4 @@
     </script>
 </body>
 </html>
+```eof
