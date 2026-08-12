@@ -71,7 +71,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // URL Google Apps Script untuk sinkronisasi data ke Spreadsheet
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw9ayDKpnvGApYOASgfXNmLRvNjpy88doHA7LIzFFIydRYqlCdHk4ggLFQgA33HB5N3Nw/exec";
         const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1HF1Yw0ySUn61dxJ8iInQ_btIcA7owVgaoaYhPnU8d8k/edit?usp=sharing";
         
@@ -89,7 +88,6 @@
             { nama: 'Anas Imron Hamza, S.Pd.', nip: '0', pangkat: 'Guru Tidak Tetap' }
         ];
 
-        // Daftar 36 Kelas untuk SMAN 1 Krembung
         const KELAS_LIST = [
             'X-1', 'X-2', 'X-3', 'X-4', 'X-5', 'X-6', 'X-7', 'X-8', 'X-9', 'X-10', 'X-11', 'X-12',
             'XI-1', 'XI-2', 'XI-3', 'XI-4', 'XI-5', 'XI-6', 'XI-7', 'XI-8', 'XI-9', 'XI-10', 'XI-11', 'XI-12',
@@ -758,7 +756,7 @@
                         const namaVal = parts[1];
                         const kelasVal = parts[2];
                         
-                        const idUnik = nisVal ? `NIS-${nisVal}` : `KLS-${kelasVal}-${namaVal.replace(/\s+/g, '')}`;
+                        const idUnik = nisVal ? `NIS-${nisVal}` : `${kelasVal}-${namaVal.replace(/\s+/g, '')}`;
 
                         newStudents.push({
                             idUnik: idUnik,
@@ -1132,17 +1130,20 @@
                                 return;
                             }
 
-                            // UNIVERSAL SCANNER MATCHING (Mencocokkan idUnik atau nis secara akurat)
-                            let siswaObj = siswaList.find(s => 
-                                s.idUnik === cleanText || 
-                                (s.nis && s.nis.trim() === cleanText) ||
-                                cleanText.includes(s.idUnik) ||
-                                s.idUnik.includes(cleanText)
-                            );
-
-                            if (!siswaObj) {
-                                siswaObj = siswaList.find(s => cleanText.toLowerCase().includes(s.nama.toLowerCase()));
-                            }
+                            // SMARTER FUZZY MATCHING (Mencocokkan idUnik, NIS, atau nama secara fleksibel)
+                            const query = cleanText.toLowerCase().replace(/\s+/g, '');
+                            
+                            let siswaObj = siswaList.find(s => {
+                                const idUnikClean = (s.idUnik || '').toLowerCase().replace(/\s+/g, '');
+                                const nisClean = (s.nis || '').toLowerCase().replace(/\s+/g, '');
+                                const namaClean = (s.nama || '').toLowerCase().replace(/\s+/g, '');
+                                
+                                return query === idUnikClean || 
+                                       (nisClean && query === nisClean) || 
+                                       query.includes(idUnikClean) || 
+                                       (nisClean && query.includes(nisClean)) ||
+                                       query.includes(namaClean);
+                            });
 
                             if (!siswaObj) {
                                 showToast(`QR Code "${cleanText}" tidak ditemukan dalam database.`, "error");
@@ -1406,4 +1407,3 @@
     </script>
 </body>
 </html>
-```eof
