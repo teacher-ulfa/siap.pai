@@ -34,11 +34,35 @@
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Print Styles for QR Code */
+        /* Print Styles optimized for F4 Paper Size */
         @media print {
+            @page {
+                size: 215mm 330mm; /* F4 Paper Size */
+                margin: 10mm;
+            }
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            #print-area { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%; 
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+            }
+            .print-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                border: 1px solid #9ca3af !important;
+                border-radius: 6px;
+                padding: 10px;
+                background: white;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
             .no-print { display: none !important; }
         }
     </style>
@@ -734,7 +758,7 @@
                         const namaVal = parts[1];
                         const kelasVal = parts[2];
                         
-                        const idUnik = nisVal ? `NIS-${nisVal}` : `KLS-${kelasVal}-${namaVal.replace(/\s+/g, '')}`;
+                        const idUnik = nisVal ? `NIS-${nisVal}` : `${kelasVal}-${namaVal.replace(/\s+/g, '')}`;
 
                         newStudents.push({
                             idUnik: idUnik,
@@ -928,7 +952,10 @@
                         <div className="fixed inset-0 bg-black/50 flex flex-col items-center p-4 z-50 fade-in overflow-y-auto">
                             <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl my-8 flex flex-col">
                                 <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center sticky top-0 bg-white z-10 no-print gap-4">
-                                    <h3 className="font-bold text-gray-800">Cetak QR Code Siswa</h3>
+                                    <div>
+                                        <h3 className="font-bold text-gray-800">Cetak QR Code Siswa (Ukuran F4 Ready)</h3>
+                                        <p className="text-xs text-gray-500">Layout grid dioptimalkan untuk ukuran kertas F4 (215 x 330 mm)</p>
+                                    </div>
                                     <div className="flex flex-wrap gap-2 items-center">
                                         <select 
                                             value={qrFilterKelas}
@@ -939,7 +966,7 @@
                                             {KELAS_LIST.map(k => <option key={k} value={k}>{k}</option>)}
                                         </select>
                                         <button onClick={() => window.print()} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm flex items-center gap-2">
-                                            <i className="ph ph-printer"></i> Cetak (Print)
+                                            <i className="ph ph-printer"></i> Cetak F4 (Print)
                                         </button>
                                         <button onClick={() => setShowQRModal(false)} className="px-4 py-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 font-medium text-sm">
                                             Tutup
@@ -947,17 +974,17 @@
                                     </div>
                                 </div>
                                 
-                                <div id="print-area" className="p-8 bg-white grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                                <div id="print-area" className="p-8 bg-white grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
                                     {siswaList.filter(s => qrFilterKelas === '' || s.kelas.trim().toUpperCase() === qrFilterKelas.toUpperCase()).map(siswa => (
-                                        <div key={siswa.idUnik} className="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center">
+                                        <div key={siswa.idUnik} className="print-card border border-gray-300 rounded-lg p-3 flex flex-col items-center text-center bg-white shadow-xs">
                                             <h4 className="font-bold text-xs text-gray-800 mb-1 leading-tight line-clamp-2 min-h-[2rem]">{siswa.nama}</h4>
                                             <img 
-                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(siswa.idUnik)}`} 
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(siswa.idUnik)}`} 
                                                 alt={`QR ${siswa.nama}`} 
-                                                className="w-24 h-24 mb-2"
+                                                className="w-20 h-20 mb-1.5"
                                             />
-                                            <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded w-full truncate">{siswa.nis || 'Tanpa NIS'}</span>
-                                            <span className="text-[10px] text-gray-500 mt-1">Kelas {siswa.kelas}</span>
+                                            <span className="text-[11px] font-semibold bg-gray-100 px-2 py-0.5 rounded w-full truncate text-gray-700">{siswa.nis || 'Tanpa NIS'}</span>
+                                            <span className="text-[10px] font-medium text-gray-500 mt-0.5">Kelas {siswa.kelas}</span>
                                         </div>
                                     ))}
                                     {siswaList.filter(s => qrFilterKelas === '' || s.kelas.trim().toUpperCase() === qrFilterKelas.toUpperCase()).length === 0 && (
@@ -1088,7 +1115,6 @@
                         { facingMode: "environment" },
                         { fps: 5, qrbox: { width: 250, height: 250 } },
                         async (decodedText) => {
-                            // Decode URI component untuk menangani string URL-encoded dari QR
                             let cleanText = decodedText.trim();
                             try {
                                 cleanText = decodeURIComponent(cleanText);
@@ -1106,16 +1132,16 @@
                                 return;
                             }
 
-                            // PENCARIAN MULTI-METODE (Mencocokkan idUnik persis ATAU mencocokkan NIS ATAU mencocokkan kemiripan teks)
+                            // Pencarian multi-metode (idUnik, NIS, atau kesamaan nama)
                             let siswaObj = siswaList.find(s => 
                                 s.idUnik === cleanText || 
                                 (s.nis && s.nis.trim() === cleanText) ||
-                                cleanText.includes(s.nis)
+                                cleanText.includes(s.idUnik) ||
+                                s.idUnik.includes(cleanText)
                             );
 
-                            // Jika masih belum ketemu, coba cari berdasarkan kecocokan string parsial pada idUnik
                             if (!siswaObj) {
-                                siswaObj = siswaList.find(s => cleanText.includes(s.nama) || cleanText.includes(s.idUnik));
+                                siswaObj = siswaList.find(s => cleanText.toLowerCase().includes(s.nama.toLowerCase()));
                             }
 
                             if (!siswaObj) {
@@ -1255,17 +1281,23 @@
             const [toast, setToast] = React.useState(null);
             
             const [siswaList, setSiswaList] = React.useState(() => {
-                const savedSiswa = localStorage.getItem('siap_siswa_list_v3');
+                const savedSiswa = localStorage.getItem('siap_siswa_list_v4');
+                let parsed = [];
                 if (savedSiswa) {
                     try {
-                        const parsed = JSON.parse(savedSiswa);
-                        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                        parsed = JSON.parse(savedSiswa);
                     } catch (e) {}
                 }
-                return INITIAL_SISWA_LIST.map((s, idx) => ({
-                    ...s,
-                    idUnik: s.nis ? `NIS-${s.nis}` : `KLS-${s.kelas}-${s.nama.replace(/\s+/g, '')}`
-                }));
+                
+                if (!Array.isArray(parsed) || parsed.length === 0) {
+                    parsed = INITIAL_SISWA_LIST;
+                }
+
+                return parsed.map(s => {
+                    const cleanNama = s.nama ? s.nama.replace(/\s+/g, '') : 'Siswa';
+                    const idUnik = s.nis && s.nis !== '0' && s.nis !== '-' ? `NIS-${s.nis}` : `${s.kelas}-${cleanNama}`;
+                    return { ...s, idUnik };
+                });
             });
 
             const [disiplinRecords, setDisiplinRecords] = React.useState(() => {
@@ -1274,7 +1306,7 @@
             });
 
             React.useEffect(() => {
-                localStorage.setItem('siap_siswa_list_v3', JSON.stringify(siswaList));
+                localStorage.setItem('siap_siswa_list_v4', JSON.stringify(siswaList));
             }, [siswaList]);
 
             React.useEffect(() => {
@@ -1374,4 +1406,3 @@
     </script>
 </body>
 </html>
-```eof
