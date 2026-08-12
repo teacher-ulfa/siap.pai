@@ -34,10 +34,10 @@
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Print Styles optimized for F4 Paper Size */
+        /* Optimized Print Styles for F4 Paper Size (215mm x 330mm) */
         @media print {
             @page {
-                size: 215mm 330mm; /* F4 Paper Size */
+                size: 215mm 330mm;
                 margin: 10mm;
             }
             body * { visibility: hidden; }
@@ -49,7 +49,7 @@
                 width: 100%; 
                 display: grid;
                 grid-template-columns: repeat(4, 1fr);
-                gap: 12px;
+                gap: 10mm;
             }
             .print-card {
                 break-inside: avoid;
@@ -758,7 +758,7 @@
                         const namaVal = parts[1];
                         const kelasVal = parts[2];
                         
-                        const idUnik = nisVal ? `NIS-${nisVal}` : `${kelasVal}-${namaVal.replace(/\s+/g, '')}`;
+                        const idUnik = nisVal ? `NIS-${nisVal}` : `KLS-${kelasVal}-${namaVal.replace(/\s+/g, '')}`;
 
                         newStudents.push({
                             idUnik: idUnik,
@@ -865,7 +865,7 @@
                                 <i className="ph ph-clipboard-text text-lg"></i> Input Massal
                             </button>
                             <button onClick={() => setShowQRModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
-                                <i className="ph ph-qr-code text-lg"></i> Cetak QR Massal
+                                <i className="ph ph-qr-code text-lg"></i> Cetak QR Massal (F4)
                             </button>
                             <button onClick={handleClearAllSiswa} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-red-200" title="Kosongkan Semua Siswa">
                                 <i className="ph ph-trash text-base"></i>
@@ -947,14 +947,14 @@
                         </div>
                     )}
 
-                    {/* Modal Cetak QR Massal dengan Filter Kelas */}
+                    {/* Modal Cetak QR Massal dengan Filter Kelas (F4 Ready) */}
                     {showQRModal && (
                         <div className="fixed inset-0 bg-black/50 flex flex-col items-center p-4 z-50 fade-in overflow-y-auto">
                             <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl my-8 flex flex-col">
                                 <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center sticky top-0 bg-white z-10 no-print gap-4">
                                     <div>
-                                        <h3 className="font-bold text-gray-800">Cetak QR Code Siswa (Ukuran F4 Ready)</h3>
-                                        <p className="text-xs text-gray-500">Layout grid dioptimalkan untuk ukuran kertas F4 (215 x 330 mm)</p>
+                                        <h3 className="font-bold text-gray-800">Cetak QR Code Siswa (Ukuran Kertas F4)</h3>
+                                        <p className="text-xs text-gray-500">Format grid teroptimasi otomatis untuk siap print di kertas F4</p>
                                     </div>
                                     <div className="flex flex-wrap gap-2 items-center">
                                         <select 
@@ -1132,7 +1132,7 @@
                                 return;
                             }
 
-                            // Pencarian multi-metode (idUnik, NIS, atau kesamaan nama)
+                            // UNIVERSAL SCANNER MATCHING (Mencocokkan idUnik atau nis secara akurat)
                             let siswaObj = siswaList.find(s => 
                                 s.idUnik === cleanText || 
                                 (s.nis && s.nis.trim() === cleanText) ||
@@ -1406,3 +1406,4 @@
     </script>
 </body>
 </html>
+```eof
